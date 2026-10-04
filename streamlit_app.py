@@ -11,12 +11,14 @@ import json
 import re
 import base64
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
 import markdown as md_lib
 import anthropic
+import db_adapter
+import db_schema
 
 # -----------------------------------------------------------------------------
 # 1. 페이지 설정 및 디자인 CSS
@@ -491,9 +493,18 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "data", "consulting.db")
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
+def using_supabase():
+    """secrets(또는 환경변수)에 DATABASE_URL 이 있으면 Supabase 를 쓴다. Turso 설정보다 우선한다.
+    (Supabase 로 옮긴 직후 문제가 생기면 DATABASE_URL 만 지워 Turso 로 되돌릴 수 있게 Turso 분기는 남겨 둔다)"""
+    return db_adapter.enabled()
+
 def get_db():
     import sqlite3 as std_sqlite3
-    
+
+    # Supabase(시험농장 앱과 같은 프로젝트, hanwoo 스키마). 어댑터가 sqlite3 처럼 동작하게 맞춰 준다.
+    if using_supabase():
+        return db_adapter.connect(db_schema.SCHEMA)
+
     # 클라우드 DB(Turso) 접속 설정이 secrets에 있으면 클라우드 연결
     if "TURSO_DATABASE_URL" in st.secrets:
         import libsql_experimental
@@ -586,6 +597,11 @@ def get_db():
     return conn
 
 def init_db():
+    if using_supabase():
+        # Postgres 표 정의는 db_schema.py 에 따로 있다 (아래 SQLite 정의·마이그레이션은 Turso/로컬 파일용)
+        db_adapter.ensure_schema(db_schema.SCHEMA, db_schema.PG_DDL,
+                                 required_tables=db_schema.TABLES, required_columns=db_schema.REQUIRED_COLUMNS)
+        return
     conn = get_db()
     c = conn.cursor()
     # 1. 농가 마스터
@@ -650,7 +666,7 @@ def init_db():
     CREATE TABLE IF NOT EXISTS shipment_records (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         farm_id INTEGER NOT NULL,
-        animal_no TEXT NOT NULL,
+        animal_no TEXT UNIQUE NOT NULL,  -- 이력번호는 소 한 마리에 하나 (운영 DB와 같은 기준, 저장 시 ON CONFLICT(animal_no))
         gender TEXT NOT NULL,
         slaughter_date DATE,
         slaughter_year INTEGER,
@@ -665,8 +681,7 @@ def init_db():
         total_price INTEGER,
         data_source TEXT DEFAULT 'manual',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (farm_id) REFERENCES farms (id) ON DELETE CASCADE,
-        UNIQUE(farm_id, animal_no)
+        FOREIGN KEY (farm_id) REFERENCES farms (id) ON DELETE CASCADE
     );
     """)
     # 5. AI 리포트
@@ -736,6 +751,7 @@ init_db()
 # Turso로 옮긴 뒤로는 운영 데이터가 클라우드에 있어 재배포로 사라지지 않으므로,
 # 이 커밋은 "되살리기 위한 수단"이 아니라 순수한 백업(스냅샷)이 되었다.
 # Turso 무료 티어에는 자동 백업이 없어서 이 백업이 유일한 복구 수단이다.
+# 2026-10-04 Supabase(시험농장과 같은 프로젝트, hanwoo 스키마)로 옮긴 뒤에도 그대로 쓴다 — 무료 요금제엔 내려받을 수 있는 백업이 없다.
 # Secrets에 GITHUB_TOKEN(해당 저장소 Contents 쓰기 권한)이 있을 때만 동작하고, 없으면 아무것도 안 한다.
 #
 # 백업은 코드 저장소가 아니라 별도의 "비공개 데이터 저장소"(GITHUB_REPO, 기본 Bst-dc/hanwoo-smart-consulting)로 간다.
@@ -779,7 +795,9 @@ def github_backup_enabled():
     return bool(_secret("GITHUB_TOKEN"))
 
 def using_cloud_db():
-    """앱이 Turso 클라우드 DB에 붙어 있는지 (get_db와 같은 기준으로 판단)."""
+    """앱이 클라우드 DB(Supabase 또는 Turso)에 붙어 있는지 (get_db와 같은 기준으로 판단)."""
+    if using_supabase():
+        return True
     try:
         return "TURSO_DATABASE_URL" in st.secrets
     except Exception:
@@ -795,10 +813,20 @@ def _snapshot_cloud_db():
     아예 없어서(.gitignore 제외) 예전처럼 열면 FileNotFoundError로 앱이 통째로 멈췄고,
     설령 있더라도 옛날 데이터를 백업이라며 덮어쓰게 된다.
     → 백업할 때마다 Turso에서 읽어 그 시점의 .db 파일을 새로 만든다.
+
+    Supabase 는 sqlite_master 에 표 정의(sql)가 없으므로, db_schema.SQLITE_DDL 로 표를 만들어 옮긴다.
     """
     import tempfile
     tmp = None
     try:
+        if using_supabase():
+            fd, tmp = tempfile.mkstemp(suffix=".db")
+            os.close(fd)
+            os.remove(tmp)
+            db_adapter.export_to_sqlite(db_schema.SCHEMA, tmp, db_schema.SQLITE_DDL, db_schema.TABLES)
+            with open(tmp, "rb") as f:
+                return f.read(), None
+
         src = get_db()
         schemas, payload = [], {}
         for t in CLOUD_BACKUP_TABLES:
@@ -836,6 +864,20 @@ def _snapshot_cloud_db():
                 os.remove(tmp)
             except OSError:
                 pass
+
+def db_file_bytes():
+    """현재 DB 전체를 SQLite .db 파일 바이트로. 반환: (bytes, None) 또는 (None, 오류문구).
+    GitHub 백업과 '데이터 관리 · 백업' 메뉴의 DB 파일 다운로드가 같이 쓴다."""
+    if using_cloud_db():
+        data, err = _snapshot_cloud_db()
+        if err:
+            return None, err + " 저장된 데이터는 클라우드에 그대로 있습니다."
+        return data, None
+    try:
+        with open(DB_PATH, "rb") as f:
+            return f.read(), None
+    except OSError as e:
+        return None, f"로컬 DB 파일을 읽지 못했습니다 ({e}). 저장된 데이터는 그대로입니다."
 
 def persist_db(reason):
     """DB를 GitHub에 커밋한다. 반환: (성공 여부, 안내 문구). 토큰이 없으면 (None, 문구).
@@ -876,16 +918,9 @@ def persist_db(reason):
                        "'데이터 관리 · 백업' 메뉴에서 DB 파일을 내려받아 보관한 뒤 관리자에게 병합을 요청하세요.")
 
     # 저장 자체는 이미 끝난 뒤라, 여기서 실패해도 앱은 계속 돌아가야 한다
-    if using_cloud_db():
-        data, err = _snapshot_cloud_db()
-        if err:
-            return False, err + " 저장된 데이터는 클라우드에 그대로 있습니다."
-    else:
-        try:
-            with open(DB_PATH, "rb") as f:
-                data = f.read()
-        except OSError as e:
-            return False, f"백업할 로컬 DB 파일을 읽지 못했습니다 ({e}). 저장된 데이터는 그대로입니다."
+    data, err = db_file_bytes()
+    if err:
+        return False, err
     local_sha = _git_blob_sha(data)
     if remote_sha == local_sha:
         _write_base_sha(local_sha)
@@ -1920,10 +1955,11 @@ with st.sidebar:
                     VALUES (?, ?, ?, ?, ?, ?)
                     """, (code_key or f"F{int(datetime.now().timestamp())%10000}", n_name, n_owner, n_region, n_type, n_heads))
                     c.commit()
-                except (sqlite3.IntegrityError, ValueError) as e:
+                except (sqlite3.IntegrityError, db_adapter.IntegrityError, ValueError) as e:
                     # farm_code는 UNIQUE라서, '그래도 등록'을 체크해도 같은 조합원번호로는 저장할 수 없다.
-                    # 클라우드(libsql)는 모든 DB 오류를 ValueError로 던지므로 UNIQUE 위반만 골라 잡는다.
-                    if isinstance(e, ValueError) and "UNIQUE" not in str(e):
+                    # Turso(libsql)는 모든 DB 오류를 ValueError로 던지고, Supabase 어댑터는 제약 위반을 모두
+                    # IntegrityError로 던지므로 UNIQUE 위반만 골라 잡는다.
+                    if not isinstance(e, sqlite3.IntegrityError) and "UNIQUE" not in str(e):
                         raise
                     st.error(
                         f"조합원번호 '{code_key or '(자동생성 번호)'}'가 이미 다른 농가에 등록되어 있어 저장하지 못했습니다."
@@ -2191,6 +2227,7 @@ if menu == "종합 현황 대시보드":
         ROUND(AVG(month_age), 1) AS 출하월령
     FROM shipment_records
     GROUP BY gender
+    ORDER BY gender
     """, conn)
     conn.close()
 
@@ -2313,11 +2350,20 @@ elif menu == "1단계 · 출하성적 비교분석":
                             gender = row.get('gender')
                             gender = gender if isinstance(gender, str) and gender.strip() else "거세"
 
+                            # INSERT OR REPLACE 는 SQLite 전용이라 Postgres 와 같이 쓰는 ON CONFLICT 로 바꿨다.
+                            # 이력번호가 이미 있으면 그 행을 새 값으로 고친다 (다른 농가에 있던 개체면 이 농가로 옮겨진다 — 예전과 같음)
                             cur.execute("""
-                            INSERT OR REPLACE INTO shipment_records (
+                            INSERT INTO shipment_records (
                                 farm_id, animal_no, gender, slaughter_date, slaughter_year, month_age,
                                 carcass_weight, grade_quality, grade_yield, bms, backfat, ribeye, price_per_kg, total_price, data_source
                             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ekape_api')
+                            ON CONFLICT(animal_no) DO UPDATE SET
+                                farm_id = excluded.farm_id, gender = excluded.gender, slaughter_date = excluded.slaughter_date,
+                                slaughter_year = excluded.slaughter_year, month_age = excluded.month_age,
+                                carcass_weight = excluded.carcass_weight, grade_quality = excluded.grade_quality,
+                                grade_yield = excluded.grade_yield, bms = excluded.bms, backfat = excluded.backfat,
+                                ribeye = excluded.ribeye, price_per_kg = excluded.price_per_kg,
+                                total_price = excluded.total_price, data_source = excluded.data_source
                             """, (
                                 selected_farm_id, ano, gender.strip(), sdate, syear, row.get('month_age'),
                                 row.get('carcass_weight'), row.get('grade_quality'), row.get('grade_yield'), row.get('bms'),
@@ -2381,6 +2427,15 @@ elif menu == "1단계 · 출하성적 비교분석":
                                 if k in df.columns: return k
                             return None
 
+                        def num(v):
+                            # 숫자 칸에 '-'·'' 같은 글자가 있으면 빈 값으로 둔다. SQLite 는 글자도 그냥 저장했지만
+                            # Supabase(Postgres) 숫자 컬럼은 거부해서 엑셀 업로드 전체가 실패한다.
+                            try:
+                                f = float(str(v).replace(",", "").strip())
+                            except (TypeError, ValueError):
+                                return None
+                            return None if pd.isna(f) else f
+
                         def grade_text(v):
                             # 빈 칸(NaN)을 str()하면 'nan'이라는 글자가 등급으로 저장되던 문제 방지
                             if v is None or (isinstance(v, float) and pd.isna(v)):
@@ -2409,20 +2464,28 @@ elif menu == "1단계 · 출하성적 비교분석":
                             try: syear = int(sdate[:4])
                             except: syear = 2025
 
+                            # 엑셀엔 단가·금액이 없으므로 이미 있는 행의 price_per_kg/total_price 는 건드리지 않는다
+                            # (예전 INSERT OR REPLACE 는 행을 통째로 바꿔 API로 받은 단가가 지워졌다)
                             cur.execute("""
-                            INSERT OR REPLACE INTO shipment_records (
+                            INSERT INTO shipment_records (
                                 farm_id, animal_no, gender, slaughter_date, slaughter_year, month_age,
                                 carcass_weight, grade_quality, grade_yield, bms, backfat, ribeye, data_source
                             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'excel')
+                            ON CONFLICT(animal_no) DO UPDATE SET
+                                farm_id = excluded.farm_id, gender = excluded.gender, slaughter_date = excluded.slaughter_date,
+                                slaughter_year = excluded.slaughter_year, month_age = excluded.month_age,
+                                carcass_weight = excluded.carcass_weight, grade_quality = excluded.grade_quality,
+                                grade_yield = excluded.grade_yield, bms = excluded.bms, backfat = excluded.backfat,
+                                ribeye = excluded.ribeye, data_source = excluded.data_source
                             """, (
                                 selected_farm_id, ano, gender, sdate, syear,
-                                row.get(find_col(col_map["월령"])),
-                                row.get(find_col(col_map["도체중"])),
+                                num(row.get(find_col(col_map["월령"]))),
+                                num(row.get(find_col(col_map["도체중"]))),
                                 grade_text(row.get(find_col(col_map["육질등급"]))),
                                 grade_text(row.get(find_col(col_map["육량등급"]))),
-                                row.get(find_col(col_map["BMS"])),
-                                row.get(find_col(col_map["등지방"])),
-                                row.get(find_col(col_map["단면적"]))
+                                num(row.get(find_col(col_map["BMS"]))),
+                                num(row.get(find_col(col_map["등지방"]))),
+                                num(row.get(find_col(col_map["단면적"])))
                             ))
                             saved_cnt += 1
                         conn.commit()
@@ -2589,6 +2652,7 @@ elif menu == "1단계 · 출하성적 비교분석":
                 FROM shipment_records
                 WHERE farm_id = ? {cmp_gender_sql} AND slaughter_year IN ({placeholders})
                 GROUP BY slaughter_year
+                ORDER BY slaughter_year
                 """, (selected_farm_id, *recent_years)).fetchall()
                 conn3.close()
                 farm_yearly_df = pd.DataFrame([dict(r) for r in yearly_rows])
@@ -2883,9 +2947,10 @@ elif menu == "2단계 · 현장방문조사":
                 else:
                     cur.execute("SELECT COALESCE(MAX(visit_number), 0) + 1 FROM visits WHERE farm_id = ?", (selected_farm_id,))
                     v_no = cur.fetchone()[0]
-                    cur.execute("INSERT INTO visits (farm_id, visit_number, visit_date, consultant_name) VALUES (?, ?, ?, ?)",
+                    # lastrowid 는 Postgres 에 없어서 RETURNING 으로 새 방문 ID를 받는다 (SQLite 3.35+·Turso 도 지원)
+                    cur.execute("INSERT INTO visits (farm_id, visit_number, visit_date, consultant_name) VALUES (?, ?, ?, ?) RETURNING id",
                                 (selected_farm_id, v_no, s_dict['visitDate'], s_dict['investigator']))
-                    v_id = cur.lastrowid
+                    v_id = cur.fetchone()[0]
 
                     cur.execute("""
                     INSERT INTO field_surveys (visit_id, survey_data)
@@ -3041,7 +3106,11 @@ elif menu == "3단계 · AI 리포트":
                     # UNIQUE(visit_id, report_mode) 덕분에 같은 모드로 다시 만들 때만 덮어쓴다.
                     # 전문 → 일반 순으로 만들어도 앞의 전문 리포트가 남는다.
                     saved_mode = "전문" if use_knowledge else "일반"
-                    c.cursor().execute("INSERT OR REPLACE INTO ai_reports (visit_id, report_mode, full_markdown, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)", (last_visit["id"], saved_mode, report_markdown))
+                    # 시각은 SQLite CURRENT_TIMESTAMP 와 같은 UTC 문자열로 직접 넣는다 (Postgres 의 CURRENT_TIMESTAMP 는 형식이 다르다)
+                    c.cursor().execute("""
+                    INSERT INTO ai_reports (visit_id, report_mode, full_markdown, created_at) VALUES (?, ?, ?, ?)
+                    ON CONFLICT(visit_id, report_mode) DO UPDATE SET full_markdown = excluded.full_markdown, created_at = excluded.created_at
+                    """, (last_visit["id"], saved_mode, report_markdown, datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")))
                     c.commit()
                     c.close()
                     notify_saved("AI 리포트가 DB에 저장되었습니다.", "AI 리포트 저장")
@@ -3137,3 +3206,20 @@ elif menu == "데이터 관리 · 백업":
     col1.download_button("📥 농가 목록 CSV 다운로드", data=f_df.to_csv(index=False).encode('utf-8-sig'), file_name="농가목록_DB.csv")
     col2.download_button("📥 전체 출하성적 CSV 다운로드", data=s_df.to_csv(index=False).encode('utf-8-sig'), file_name="출하성적_전체_DB.csv")
     col3.download_button("📥 현장 방문 이력 CSV 다운로드", data=v_df.to_csv(index=False).encode('utf-8-sig'), file_name="현장방문이력_전체_DB.csv")
+
+    # DB 전체(농가·방문·조사표·출하성적·AI 리포트)를 SQLite 파일 하나로 받는다. 수동 백업·DB 이관 원본용.
+    # 클라우드 DB를 통째로 읽어 파일을 만드느라 몇 초 걸리므로, 메뉴를 열 때마다가 아니라 버튼을 눌렀을 때만 만든다.
+    st.markdown("---")
+    st.subheader("💾 전체 DB 파일 백업")
+    st.caption("위 표들을 포함한 DB 전체를 .db 파일 하나로 내려받습니다. 조합원 정보가 들어 있으니 보관에 주의하세요.")
+    if st.button("DB 파일 준비"):
+        with st.spinner("DB 전체를 파일로 만드는 중..."):
+            data, err = db_file_bytes()
+        if err:
+            st.error(err)
+        else:
+            st.session_state["_db_file"] = (data, datetime.now().strftime("%Y%m%d_%H%M"))
+    if st.session_state.get("_db_file"):
+        db_bytes, stamp = st.session_state["_db_file"]
+        st.download_button(f"📥 consulting_{stamp}.db 다운로드 ({len(db_bytes) // 1024:,} KB)", data=db_bytes,
+                           file_name=f"consulting_{stamp}.db", mime="application/octet-stream")
