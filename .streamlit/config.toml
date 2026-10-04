@@ -1,0 +1,16 @@
+[theme]
+base = "light"
+primaryColor = "#5E6F55"
+backgroundColor = "#F4EFE6"
+secondaryBackgroundColor = "#FBF8F2"
+textColor = "#2B2B28"
+font = "sans serif"
+baseRadius = "10px"
+borderColor = "#E4DBCB"
+dataframeBorderColor = "#E9E1D3"
+dataframeHeaderBackgroundColor = "#F4EFE6"
+
+[server]
+headless = true
+enableCORS = false
+enableXsrfProtection = false

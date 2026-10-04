@@ -1,0 +1,59 @@
+# 바이너리 및 실행 파일
+cloudflared.exe
+*.exe
+
+# 보안 및 API 키
+api_key.txt
+access_token.txt
+.env
+
+# 파이썬 캐시
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 임시 파일
+~$*
+*.tmp
+
+# 에디터 설정
+.vscode/
+.idea/
+
+# Streamlit 시크릿 제외 (API 키 포함). 단 테마 설정(config.toml)은 앱 외형이라 추적한다
+.streamlit/*
+!.streamlit/config.toml
+
+# 농가 컨설팅 DB 및 백업 (민감/대용량 데이터)
+data/*.db
+data/*.db.bak*
+
+# 실제 농가/조합원 개인정보가 담긴 임시 추출 파일
+farm_10.csv
+farm_stats.csv
+farms_all.md
+farm_linkage.md
+tests/analysis_output.md
+tests/temp_survey.tsv
+temp.txt
+
+# Turso 이관 작업 산출물 — migrate.py 에 인증 토큰이, dump.sql 에 조합원 개인정보가 평문으로 들어있다
+migrate.py
+dump.sql
+
+# reference/ — 웹시스템 작업에 필요해 바깥에서 모아둔 원본 자료 (사본이라 저장소엔 올리지 않는다)
+#   과거리포트/ : 조합원 실명이 담긴 과거 컨설팅 보고서 (골든 샘플용)
+#   원본PDF/    : knowledge/*.md 재추출용 원본. 추출 결과만 커밋하면 된다
+reference/
+
+# 상위 한우 저장소에서 쓰던 규칙 — 독립 저장소가 되면서 옮겨옴 (원본 엑셀/PDF/압축본은 올리지 않는다)
+*.xlsx
+*.pdf
+*.zip
+api_cache.json
+
+# Claude Code 런타임 락 (로컬 전용)
+.claude/scheduled_tasks.lock
+
+# 2026-10-04 코드 저장소 공개 전환 — 남의 출판물 추출본이라 비공개 데이터 저장소에만 둔다
+knowledge/

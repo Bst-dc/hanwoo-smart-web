@@ -1,0 +1,14 @@
+# 텍스트 파일은 저장소 안에서 LF로 통일한다.
+# (core.autocrlf=true 환경에서 커밋할 때마다 뜨는 "LF will be replaced by CRLF" 경고 방지.
+#  GitHub 원격 저장소(origin)의 실제 내용도 LF 기준이라 이쪽에 맞춘다.)
+* text=auto eol=lf
+
+# 바이너리는 줄바꿈 변환 대상에서 제외
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.gif binary
+*.db binary
+*.exe binary
+*.zip binary

@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>한우 스마트 컨설팅 통합 웹 플랫폼</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Marked.js for Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- 사이드바 / 상단 네비게이션 -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">🐂</div>
+        <div class="brand-text">
+          <h2>한우 스마트컨설팅</h2>
+          <span>AI 통합 자문 플랫폼</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <button class="nav-item active" data-tab="dashboard">
+          <span class="icon">📊</span>
+          <span class="text">한우 통계 대시보드</span>
+        </button>
+        <button class="nav-item" data-tab="farm-analysis">
+          <span class="icon">🐄</span>
+          <span class="text">이력제 & 출하성적 분석</span>
+        </button>
+        <button class="nav-item" data-tab="field-survey">
+          <span class="icon">📝</span>
+          <span class="text">현장 방문조사 입력</span>
+        </button>
+        <button class="nav-item" data-tab="ai-report">
+          <span class="icon">🤖</span>
+          <span class="text">Claude AI 분석 리포트</span>
+        </button>
+        <button class="nav-item" data-tab="database">
+          <span class="icon">🗄️</span>
+          <span class="text">누적 데이터베이스</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="consultant-badge">
+          <span class="badge-dot"></span>
+          <span>배성태 수석 컨설턴트</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 메인 컨텐츠 영역 -->
+    <main class="main-content">
+      <!-- 헤더 -->
+      <header class="top-header">
+        <div class="farm-selector-wrapper">
+          <label for="farmSelect">현재 컨설팅 농가:</label>
+          <select id="farmSelect" class="form-select">
+            <option value="">농가를 선택하세요...</option>
+          </select>
+          <button id="btnNewFarmModal" class="btn btn-outline btn-sm">+ 농가 등록</button>
+        </div>
+        <div class="header-actions">
+          <span id="systemTime" class="system-time"></span>
+        </div>
+      </header>
+
+      <!-- 1. 한우 통계 대시보드 탭 -->
+      <section id="tab-dashboard" class="tab-pane active">
+        <div class="section-header">
+          <div>
+            <h1>한우 통계 대시보드</h1>
+            <p class="subtitle">지금까지 방문한 전체 농가의 출하성적과 전국 평균을 한눈에 비교합니다.</p>
+          </div>
+          <button id="btnRefreshDashboard" class="btn btn-secondary btn-sm">🔄 데이터 새로고침</button>
+        </div>
+
+        <!-- KPI 카드 -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-icon blue">🏡</div>
+            <div class="kpi-info">
+              <span class="kpi-label">총 관리 농가 수</span>
+              <h3 id="kpiTotalFarms">-</h3>
+              <span class="kpi-sub">등록된 전체 농가</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon green">🚗</div>
+            <div class="kpi-info">
+              <span class="kpi-label">누적 현장 방문 횟수</span>
+              <h3 id="kpiTotalVisits">-</h3>
+              <span class="kpi-sub">수행된 컨설팅 누계</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon purple">🥩</div>
+            <div class="kpi-info">
+              <span class="kpi-label">누적 분석 출하 두수</span>
+              <h3 id="kpiTotalShipments">-</h3>
+              <span class="kpi-sub">DB 적재 개체수</span>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon gold">🏆</div>
+            <div class="kpi-info">
+              <span class="kpi-label">방문농가 1+이상 출현율</span>
+              <h3 id="kpiAvg1PlusRate">-%</h3>
+              <span class="kpi-sub">전국 평균 대비 우수</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 차트 영역: 전국 vs 누적 방문농가 전체 평균 -->
+        <div class="dashboard-grid">
+          <div class="card chart-card">
+            <div class="card-header">
+              <h3>📈 연도별 평균 성적 추이 (방문농가 전체 vs 전국평균)</h3>
+              <div class="chart-controls">
+                <button class="btn-chip active" data-metric="avg_weight">도체중 (kg)</button>
+                <button class="btn-chip" data-metric="avg_bms">BMS (마블링)</button>
+                <button class="btn-chip" data-metric="rate_1plus_above">1+이상 비율 (%)</button>
+                <button class="btn-chip" data-metric="avg_month_age">출하월령 (개월)</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <canvas id="benchmarkChart" height="280"></canvas>
+            </div>
+          </div>
+
+          <!-- 연도별 평균 성적 요약 표 -->
+          <div class="card table-card">
+            <div class="card-header">
+              <h3>📋 연도별 방문농가 전체 평균 집계표</h3>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="styled-table" id="yearlyTable">
+                  <thead>
+                    <tr>
+                      <th>연도</th>
+                      <th>농가수</th>
+                      <th>출하두수</th>
+                      <th>도체중</th>
+                      <th>BMS</th>
+                      <th>1+이상%</th>
+                      <th>출하월령</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- 동적 렌더링 -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 최근 방문 농가 리스트 -->
+        <div class="card mt-4">
+          <div class="card-header">
+            <h3>🕒 최근 방문 및 컨설팅 이력</h3>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="styled-table" id="recentVisitsTable">
+                <thead>
+                  <tr>
+                    <th>농가명</th>
+                    <th>방문차수</th>
+                    <th>방문일자</th>
+                    <th>담당 컨설턴트</th>
+                    <th>상태</th>
+                    <th>AI 리포트</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- 동적 렌더링 -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 이력제 & 출하성적 분석 탭 -->
+      <section id="tab-farm-analysis" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h1>농가 이력제 출하성적 추출 및 전국 비교</h1>
+            <p class="subtitle">개체이력번호를 입력하여 축평원 데이터를 조회하고 전국 성적과 1:1 비교분석표를 만듭니다.</p>
+          </div>
+        </div>
+
+        <div class="analysis-grid">
+          <!-- 이력번호 입력 카드 -->
+          <div class="card">
+            <div class="card-header">
+              <h3>🔍 1단계: 개체이력번호 입력 (OpenAPI 실시간 조회)</h3>
+            </div>
+            <div class="card-body">
+              <p class="form-hint">농가의 출하 소 개체이력번호(12자리)를 줄바꿈이나 쉼표로 입력하세요:</p>
+              <textarea id="inputAnimalNumbers" class="form-textarea" rows="4" placeholder="예:&#10;002154889011&#10;002154889012&#10;002154889013"></textarea>
+              <div class="form-actions mt-3">
+                <button id="btnFetchShipment" class="btn btn-primary">⚡ 축평원 성적 자동 추출 및 DB 저장</button>
+              </div>
+              <div id="shipmentFetchStatus" class="status-msg mt-2"></div>
+            </div>
+          </div>
+
+          <!-- 전국 1:1 비교분석표 카드 -->
+          <div class="card">
+            <div class="card-header">
+              <h3>📊 2단계: 출하성적 전국 1:1 비교분석표</h3>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="styled-table comparison-table" id="comparisonTable">
+                  <thead>
+                    <tr>
+                      <th>평가 항목</th>
+                      <th>농가 성적</th>
+                      <th>전국 평균</th>
+                      <th>격차 (+/-)</th>
+                      <th>진단 평가</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td colspan="5" class="text-center">농가를 선택하고 성적을 조회하면 비교표가 생성됩니다.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 최근 출하 개체 목록 -->
+        <div class="card mt-4">
+          <div class="card-header">
+            <h3>📑 농가 출하 개체별 상세 성적표</h3>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="styled-table" id="shipmentRecordsTable">
+                <thead>
+                  <tr>
+                    <th>이력번호</th>
+                    <th>성별</th>
+                    <th>도축일자</th>
+                    <th>도체중</th>
+                    <th>육질등급</th>
+                    <th>육량등급</th>
+                    <th>BMS</th>
+                    <th>등지방</th>
+                    <th>단면적</th>
+                    <th>월령</th>
+                    <th>낙찰금액</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- 동적 렌더링 -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. 현장 방문조사 입력 탭 (모바일 최적화) -->
+      <section id="tab-field-survey" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h1>3 & 4단계: 현장 방문 조사 입력</h1>
+            <p class="subtitle">모바일/태블릿에서 축사를 둘러보며 사양관리 실태와 농가 대화 내용을 빠르게 기록합니다.</p>
+          </div>
+          <button id="btnSaveSurvey" class="btn btn-primary">💾 현장조사 저장하기</button>
+        </div>
+
+        <div class="survey-container">
+          <!-- 기본 정보 -->
+          <div class="card mb-3">
+            <div class="card-header">
+              <h3>📌 방문 기본 정보</h3>
+            </div>
+            <div class="card-body form-row-3">
+              <div class="form-group">
+                <label>방문 일자</label>
+                <input type="date" id="surveyDate" class="form-input">
+              </div>
+              <div class="form-group">
+                <label>컨설턴트명</label>
+                <input type="text" id="surveyConsultant" class="form-input" value="배성태 수석 컨설턴트">
+              </div>
+              <div class="form-group">
+                <label>사육 두수</label>
+                <input type="number" id="surveyHeads" class="form-input" placeholder="두수 입력">
+              </div>
+            </div>
+          </div>
+
+          <!-- 섹션 1: 사양관리 실태 -->
+          <div class="card mb-3">
+            <div class="card-header">
+              <h3>🌾 성장단계별 사양관리 실태</h3>
+            </div>
+            <div class="card-body">
+              <div class="survey-item">
+                <div class="survey-label">
+                  <strong>육성기 (~13개월)</strong>
+                  <span>조사료 무제한 및 배합사료 1.8% 제한 급여 여부</span>
+                </div>
+                <div class="btn-group-rating" data-field="feed_growing">
+                  <button type="button" class="btn-rate" data-val="양호">양호</button>
+                  <button type="button" class="btn-rate active" data-val="보통">보통</button>
+                  <button type="button" class="btn-rate" data-val="미흡">미흡</button>
+                </div>
+              </div>
+
+              <div class="survey-item">
+                <div class="survey-label">
+                  <strong>비육전기 (14~18개월)</strong>
+                  <span>배합사료 2.5% 수준 증량 및 TMR 섭취 상태</span>
+                </div>
+                <div class="btn-group-rating" data-field="feed_early">
+                  <button type="button" class="btn-rate" data-val="양호">양호</button>
+                  <button type="button" class="btn-rate active" data-val="보통">보통</button>
+                  <button type="button" class="btn-rate" data-val="미흡">미흡</button>
+                </div>
+              </div>
+
+              <div class="survey-item">
+                <div class="survey-label">
+                  <strong>비육중기 (19~24개월)</strong>
+                  <span>배합사료 2.0% 정밀 통제 (불필요한 과비 및 등지방 억제)</span>
+                </div>
+                <div class="btn-group-rating" data-field="feed_mid">
+                  <button type="button" class="btn-rate active" data-val="양호">양호</button>
+                  <button type="button" class="btn-rate" data-val="보통">보통</button>
+                  <button type="button" class="btn-rate" data-val="미흡">미흡</button>
+                </div>
+              </div>
+
+              <div class="survey-item">
+                <div class="survey-label">
+                  <strong>비육후기 (25개월~출하)</strong>
+                  <span>고열량 사료 집중 급여 및 수송 감량 방지제 관리</span>
+                </div>
+                <div class="btn-group-rating" data-field="feed_late">
+                  <button type="button" class="btn-rate" data-val="양호">양호</button>
+                  <button type="button" class="btn-rate active" data-val="보통">보통</button>
+                  <button type="button" class="btn-rate" data-val="미흡">미흡</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 섹션 2: 축사 시설 및 환경 -->
+          <div class="card mb-3">
+            <div class="card-header">
+              <h3>🏡 축사 시설 및 환경 평가</h3>
+            </div>
+            <div class="card-body">
+              <div class="survey-item">
+                <div class="survey-label">
+                  <strong>우방 밀도</strong>
+                  <span>두당 면적 10㎡ 이상 확보 및 활동 공간</span>
+                </div>
+                <div class="btn-group-rating" data-field="facility_density">
+                  <button type="button" class="btn-rate active" data-val="적정">적정</button>
+                  <button type="button" class="btn-rate" data-val="보통">보통</button>
+                  <button type="button" class="btn-rate" data-val="과밀">과밀</button>
+                </div>
+              </div>
+
+              <div class="survey-item">
+                <div class="survey-label">
+                  <strong>환기 및 공기질</strong>
+                  <span>환풍기 가동, 가스 냄새, 결로 상태</span>
+                </div>
+                <div class="btn-group-rating" data-field="facility_ventilation">
+                  <button type="button" class="btn-rate" data-val="양호">양호</button>
+                  <button type="button" class="btn-rate active" data-val="보통">보통</button>
+                  <button type="button" class="btn-rate" data-val="불량">불량</button>
+                </div>
+              </div>
+
+              <div class="survey-item">
+                <div class="survey-label">
+                  <strong>바닥 깔짚 상태</strong>
+                  <span>건조도, 교체 주기, 분변 고임 여부</span>
+                </div>
+                <div class="btn-group-rating" data-field="facility_bedding">
+                  <button type="button" class="btn-rate" data-val="건조·양호">양호</button>
+                  <button type="button" class="btn-rate active" data-val="보통">보통</button>
+                  <button type="button" class="btn-rate" data-val="다습·불량">불량</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 섹션 3: 농가 대화 내용 및 애로사항 (음성 인식 지원) -->
+          <div class="card">
+            <div class="card-header flex-between">
+              <h3>💬 농가 대화 내용 및 핵심 애로사항</h3>
+              <button id="btnVoiceInput" class="btn btn-outline btn-sm">🎤 음성 인식 시작</button>
+            </div>
+            <div class="card-body">
+              <p class="form-hint">농장주와의 상담 내용, 목표 출하성적, 현재 가장 큰 고민거리를 기록하세요:</p>
+              <textarea id="inputFarmerDialogue" class="form-textarea" rows="4" placeholder="예: 최근 배합사료 단가 인상으로 TMR 전환을 고려 중이심. 지난번 출하 때 등지방이 두껍게 나와서 사료 프로그램 조정을 원하심."></textarea>
+              
+              <label class="mt-3 block font-semibold">🔍 컨설턴트 현장 총평 및 메모:</label>
+              <textarea id="inputConsultantMemo" class="form-textarea" rows="3" placeholder="예: 육성기 조사료 섭취량 부족이 등심단면적과 BMS 정체의 주요 원인으로 판단됨. 단기 비육 프로그램 도입 검토 권장."></textarea>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Claude AI 분석 리포트 탭 -->
+      <section id="tab-ai-report" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h1>5단계: Claude AI 맞춤형 종합 분석 리포트</h1>
+            <p class="subtitle">출하성적(정량)과 현장조사(정성)를 결합하여 Claude가 진단-원인-처방 리포트를 생성합니다.</p>
+          </div>
+          <div class="header-actions">
+            <button id="btnGenerateReport" class="btn btn-primary">✨ AI 종합 리포트 생성</button>
+            <button id="btnPrintReport" class="btn btn-outline">🖨️ PDF / 인쇄 출력</button>
+          </div>
+        </div>
+
+        <!-- 현장조사 누락 데이터 알림 대시보드 -->
+        <div class="card mb-4" id="missingDataAlertCard" style="display: none; border-left: 4px solid #ef4444; background-color: #fef2f2;">
+          <div class="card-header flex-between" style="border-bottom: none; padding-bottom: 0;">
+            <h3 style="color: #b91c1c;">⚠️ 현장 방문조사 누락 알림</h3>
+            <span class="badge-status negative" id="missingDataCountBadge">누락 0건</span>
+          </div>
+          <div class="card-body">
+            <p style="color: #7f1d1d; margin-bottom: 10px;">출하성적은 등록되어 있으나, 현장 방문조사가 완료되지 않아 정확한 AI 리포트를 생성할 수 없는 농가 목록입니다. <strong>현장 방문조사 입력 탭</strong>에서 정보를 추가해주세요.</p>
+            <div class="table-responsive">
+              <table class="styled-table" id="missingDataFarmsTable">
+                <thead>
+                  <tr>
+                    <th>농장코드</th>
+                    <th>농가명</th>
+                    <th>대표자</th>
+                    <th>출하두수</th>
+                    <th>액션</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- 동적 렌더링 -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="aiLoadingIndicator" class="loading-box" style="display: none;">
+          <div class="spinner"></div>
+          <p>Claude AI가 출하성적과 현장조사 데이터를 융합 분석 중입니다... (약 10~20초 소요)</p>
+        </div>
+
+        <div id="reportContainer" class="report-paper">
+          <div class="empty-state">
+            <div class="empty-icon">📑</div>
+            <h3>생성된 컨설팅 리포트가 없습니다.</h3>
+            <p>'AI 종합 리포트 생성' 버튼을 클릭하면 진단-원인-처방 7단 리포트가 작성됩니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. 누적 데이터베이스 탭 -->
+      <section id="tab-database" class="tab-pane">
+        <div class="section-header">
+          <div>
+            <h1>6단계: 누적 데이터베이스 관리</h1>
+            <p class="subtitle">시스템에 등록된 모든 농가, 방문 이력, 출하 데이터가 SQLite DB에 안전하게 저장됩니다.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>📋 등록 농가 마스터 목록</h3>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="styled-table" id="dbFarmsTable">
+                <thead>
+                  <tr>
+                    <th>농장코드</th>
+                    <th>농가명</th>
+                    <th>대표자</th>
+                    <th>연락처</th>
+                    <th>사육형태</th>
+                    <th>사육두수</th>
+                    <th>방문횟수</th>
+                    <th>출하두수</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- 동적 렌더링 -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 신규 농가 등록 모달 -->
+  <div id="modalNewFarm" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>신규 농가 등록</h3>
+        <button id="btnCloseModal" class="btn-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>조합원 번호</label>
+          <input type="text" id="newFarmCode" class="form-input" placeholder="예: M1234 (미입력 시 자동생성)">
+        </div>
+        <div class="form-group">
+          <label>농가명 *</label>
+          <input type="text" id="newFarmName" class="form-input" placeholder="예: 성태한우목장" required>
+        </div>
+        <div class="form-group">
+          <label>대표자명</label>
+          <input type="text" id="newOwnerName" class="form-input" placeholder="예: 홍길동">
+        </div>
+        <div class="form-group">
+          <label>연락처</label>
+          <input type="text" id="newPhone" class="form-input" placeholder="예: 010-1234-5678">
+        </div>
+        <div class="form-group">
+          <label>주소</label>
+          <input type="text" id="newAddress" class="form-input" placeholder="예: 강원도 횡성군">
+        </div>
+        <div class="form-group">
+          <label>사육 형태</label>
+          <select id="newBreedingType" class="form-select">
+            <option value="비육우">비육우</option>
+            <option value="일관사육">일관사육</option>
+            <option value="번식우">번식우</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>사육 두수</label>
+          <input type="number" id="newTotalHeads" class="form-input" value="100">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnCancelFarm" class="btn btn-secondary">취소</button>
+        <button id="btnSubmitFarm" class="btn btn-primary">등록하기</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
