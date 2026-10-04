@@ -11,6 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Deployment layout (2026-10-04)
 
+Live app: https://hanwoo-smart-web-rfkwappjmj7yr4xv6ahuwes.streamlit.app/ (deployed from public repo `Bst-dc/hanwoo-smart-web`, **Python 3.12** — `libsql-experimental` has no wheels for 3.14, and the Python version can only be chosen when an app is created).
+
 Streamlit Community Cloud's free tier allows only **one private app**, and that slot is used by the separate `testfarm` app. So the code is deployed from a **public** repo, and everything sensitive lives in a **private data repo** (`GITHUB_REPO` secret, default `Bst-dc/hanwoo-smart-consulting`):
 
 - `data/consulting.db` backups — written by `persist_db()` via the GitHub contents API (`GITHUB_DB_PATH`).

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 한우 스마트 컨설팅 통합 웹 플랫폼 (한우컨설팅일지 정밀 양식 연동판)
-Streamlit Cloud 배포용 (https://hanwoo-consulting-6syh4k9mi24hwcvm8vxu2g.streamlit.app/)
+Streamlit Cloud 배포용 (https://hanwoo-smart-web-rfkwappjmj7yr4xv6ahuwes.streamlit.app/)
 """
 import streamlit as st
 import pandas as pd
