@@ -4,6 +4,7 @@ import { renderDashboard } from "./pages/dashboard.js";
 import { renderShipments } from "./pages/shipments.js";
 import { renderSurvey } from "./pages/survey.js";
 import { renderReport } from "./pages/report.js";
+import { renderBackup } from "./pages/backup.js";
 
 // ---------- 메뉴 ----------
 const MENUS = [
@@ -11,7 +12,7 @@ const MENUS = [
   { id: "shipments", label: "1단계 · 출하성적 비교분석", render: renderShipments },
   { id: "survey", label: "2단계 · 현장방문조사", render: renderSurvey },
   { id: "report", label: "3단계 · AI 리포트", render: renderReport },
-  { id: "backup", label: "데이터 관리 · 백업" },
+  { id: "backup", label: "데이터 관리 · 백업", render: renderBackup },
 ];
 
 function currentMenu() {

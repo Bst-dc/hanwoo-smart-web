@@ -14,7 +14,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from . import auth, config, db
 from .routers import auth as auth_router
-from .routers import dashboard, farms, reports, shipments, surveys
+from .routers import dashboard, data, farms, reports, shipments, surveys
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("hanwoo.api")
@@ -71,6 +71,7 @@ app.include_router(dashboard.router)
 app.include_router(shipments.router)
 app.include_router(surveys.router)
 app.include_router(reports.router)
+app.include_router(data.router)
 
 # 화면 파일. API 경로를 다 등록한 뒤 마지막에 붙여야 /api/... 를 가리지 않는다.
 app.mount("/", StaticFiles(directory=config.WEB_DIR, html=True), name="web")
