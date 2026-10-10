@@ -985,8 +985,10 @@ def persist_db(reason):
         return False, f"GitHub 백업 실패 ({e}). 데이터는 이 서버에만 저장되어 있습니다."
 
     # 이 DB가 출발한 버전 이후에 누군가(다른 PC·로컬 커밋 등) GitHub의 DB를 바꿨다면 덮어쓰지 않는다.
-    # 덮어쓰면 그쪽에서 저장한 데이터가 사라지기 때문
-    base_sha = _read_base_sha()
+    # 덮어쓰면 그쪽에서 저장한 데이터가 사라지기 때문.
+    # 단 클라우드 DB 모드에선 검사하지 않는다: 백업 파일은 늘 DB 전체의 최신 사본이라 덮어써도 잃는 게 없고,
+    # 앱이 둘(Streamlit Cloud·AWS) 이상 같은 파일에 올리면 서로를 '다른 곳에서 변경됨'으로 보고 백업을 멈춘다.
+    base_sha = None if using_cloud_db() else _read_base_sha()
     if remote_sha and base_sha and remote_sha != base_sha:
         return False, ("GitHub의 DB가 이 앱이 시작된 뒤 다른 곳에서 변경되어 자동 백업을 멈췄습니다 (덮어쓰면 그쪽 데이터가 사라짐). "
                        "'데이터 관리 · 백업' 메뉴에서 DB 파일을 내려받아 보관한 뒤 관리자에게 병합을 요청하세요.")
