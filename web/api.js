@@ -27,6 +27,60 @@ export async function api(path, options = {}) {
   return body;
 }
 
+// 한 줄에 JSON 하나씩 흘려 보내는 응답(AI 리포트)을 읽어 줄마다 onEvent 를 부른다. signal 로 중간에 끊을 수 있다.
+export async function apiStream(path, body, onEvent, signal) {
+  const res = await fetch(API_BASE + path, {
+    method: "POST", credentials: "include", signal,
+    headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+  if (res.status === 401) {
+    state.onUnauthorized();
+    throw new Error("로그인이 필요합니다.");
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(typeof err?.detail === "string" ? err.detail : `요청 실패 (${res.status})`);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    buf += decoder.decode(value || new Uint8Array(), { stream: !done });
+    let nl;
+    while ((nl = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, nl).trim();
+      buf = buf.slice(nl + 1);
+      if (line) onEvent(JSON.parse(line));
+    }
+    if (done) break;
+  }
+}
+
+// 서버가 만든 파일을 POST 로 받아 내려받는다 (리포트 HTML 처럼 화면의 글을 보내 만드는 파일).
+export async function apiDownloadPost(path, body, filename) {
+  const res = await fetch(API_BASE + path, {
+    method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+  if (res.status === 401) {
+    state.onUnauthorized();
+    throw new Error("로그인이 필요합니다.");
+  }
+  if (!res.ok) throw new Error(`내려받기 실패 (${res.status})`);
+  saveBlob(await res.blob(), filename);
+}
+
+export function saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 // 서버가 만든 파일(인쇄 리포트 등)을 내려받는다. 로그인 쿠키가 필요해서 링크 대신 fetch 로 받는다.
 export async function apiDownload(path, filename) {
   const res = await fetch(API_BASE + path, { credentials: "include" });
@@ -35,14 +89,7 @@ export async function apiDownload(path, filename) {
     throw new Error("로그인이 필요합니다.");
   }
   if (!res.ok) throw new Error(`내려받기 실패 (${res.status})`);
-  const url = URL.createObjectURL(await res.blob());
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  saveBlob(await res.blob(), filename);
 }
 
 // 저장 결과 안내 (기존 앱 notify_saved/show_flash): 저장 성공 문구 + GitHub 백업 결과.

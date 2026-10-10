@@ -280,3 +280,23 @@ class VisitSaved(BaseModel):
     visit_id: int
     visit_number: int
     backup: BackupStatus
+
+
+# ---------- 3단계 · AI 리포트 ----------
+ReportMode = Literal["전문", "일반"]
+
+
+class ReportRequest(BaseModel):
+    mode: ReportMode = Field(description="전문: 전문자료(약 15만 토큰)를 근거로 / 일반: Claude 일반 지식만 (빠르고 저렴)")
+
+
+class ReportHtmlRequest(BaseModel):
+    farm_id: int
+    markdown: str = Field(min_length=1, max_length=500_000)
+    mode: ReportMode
+
+
+class ReportStatus(BaseModel):
+    key_configured: bool
+    knowledge_ready: bool
+    model: str

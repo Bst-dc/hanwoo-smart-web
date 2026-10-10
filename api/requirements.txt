@@ -7,3 +7,5 @@ pandas>=2.0              # 엑셀 읽기·인쇄 리포트 (기존 앱과 같은
 openpyxl>=3.1.2          # .xlsx
 python-multipart>=0.0.9  # 파일 업로드
 httpx>=0.27              # 테스트(TestClient)
+anthropic>=0.62,<2.0  # AI 리포트 (기존 앱과 같은 범위)
+markdown>=3.5          # 리포트 HTML 내려받기
