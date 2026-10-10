@@ -2882,8 +2882,14 @@ elif menu == "2단계 · 현장방문조사":
             return existing.get(key, fallback)
 
         def gi(options, key, fallback):
+            # 저장된 값이 빈 칸이거나 선택지에 없으면 아무것도 고르지 않은 상태(None)로 연다.
+            # 예전엔 첫 선택지를 골라 둬서, 조사표를 고쳐 저장하면 빈 칸이 '과도하게 묽음' 같은 값으로 바뀌었다.
+            # 저장할 때 None 인 항목은 원래 값으로 되돌린다 (아래 keep_original_blanks).
             val = existing.get(key, fallback)
-            return options.index(val) if val in options else 0
+            return options.index(val) if val in options else (None if key in existing else 0)
+
+        def keep_original_blanks(d):
+            return {k: (existing.get(k, "") if v is None else v) for k, v in d.items()}
 
         default_date = datetime.now()
         if existing.get('visitDate'):
@@ -2904,10 +2910,10 @@ elif menu == "2단계 · 현장방문조사":
             s_dict['memberName'] = r2_c1.text_input("조합원명", value=gv('memberName', ""))
             s_dict['memberId'] = r2_c2.text_input("조합원번호", value=gv('memberId', ""))
 
-            s_dict['region'] = st.selectbox("지역 (선택 시 아래 '2. 날씨 정보' 섹션이 즉시 자동으로 채워집니다)", REGION_OPTIONS, index=gi(REGION_OPTIONS, 'region', REGION_OPTIONS[0]))
+            s_dict['region'] = st.selectbox("지역 (선택 시 아래 '2. 날씨 정보' 섹션이 즉시 자동으로 채워집니다)", REGION_OPTIONS, placeholder="(미입력)", index=gi(REGION_OPTIONS, 'region', REGION_OPTIONS[0]))
             s_dict['farmType'] = st.radio("전업여부", ["전업", "겸업"], horizontal=True, index=gi(["전업", "겸업"], 'farmType', "전업"))
             biz_opts = ["28개월 조기출하(회전율 최우선)", "30개월 이상 장기비육(육질 투플러스 최우선)", "복합"]
-            s_dict['bizGoal'] = st.selectbox("🎯 농가 경영 목표 (출하 전략)", biz_opts, index=gi(biz_opts, 'bizGoal', biz_opts[0]))
+            s_dict['bizGoal'] = st.selectbox("🎯 농가 경영 목표 (출하 전략)", biz_opts, placeholder="(미입력)", index=gi(biz_opts, 'bizGoal', biz_opts[0]))
 
         wd = WEATHER_DATA.get(s_dict['region'], {})
 
@@ -2932,17 +2938,17 @@ elif menu == "2단계 · 현장방문조사":
 
             with st.expander("3. 축산 사육환경", expanded=False):
                 breeding_opts = ["일관사육","암소번식","비육전문(거)","비육전문(암)","비육전문(거,암)"]
-                s_dict['breedingType'] = st.selectbox("사육형태", breeding_opts, index=gi(breeding_opts, 'breedingType', breeding_opts[0]))
+                s_dict['breedingType'] = st.selectbox("사육형태", breeding_opts, placeholder="(미입력)", index=gi(breeding_opts, 'breedingType', breeding_opts[0]))
                 st.markdown("---")
                 pen_size_opts = ["5X10","4X8","3X6","운동장","계류","기타"]
                 pen_density_opts = ["높음","적정","낮음"]
                 rc1, rc2, rc3 = st.columns(3)
-                s_dict['fatteningPenSize'] = rc1.selectbox("비육우방 크기", pen_size_opts, index=gi(pen_size_opts, 'fatteningPenSize', pen_size_opts[0]))
-                s_dict['fatteningPenDensity'] = rc1.selectbox("비육우방 밀도", pen_density_opts, index=gi(pen_density_opts, 'fatteningPenDensity', pen_density_opts[1]))
-                s_dict['breedingPenSize'] = rc2.selectbox("번식우방 크기", pen_size_opts, index=gi(pen_size_opts, 'breedingPenSize', pen_size_opts[0]))
-                s_dict['breedingPenDensity'] = rc2.selectbox("번식우방 밀도", pen_density_opts, index=gi(pen_density_opts, 'breedingPenDensity', pen_density_opts[1]))
-                s_dict['calfPenSize'] = rc3.selectbox("송아지우방 크기", pen_size_opts, index=gi(pen_size_opts, 'calfPenSize', pen_size_opts[0]))
-                s_dict['calfPenDensity'] = rc3.selectbox("송아지우방 밀도", pen_density_opts, index=gi(pen_density_opts, 'calfPenDensity', pen_density_opts[1]))
+                s_dict['fatteningPenSize'] = rc1.selectbox("비육우방 크기", pen_size_opts, placeholder="(미입력)", index=gi(pen_size_opts, 'fatteningPenSize', pen_size_opts[0]))
+                s_dict['fatteningPenDensity'] = rc1.selectbox("비육우방 밀도", pen_density_opts, placeholder="(미입력)", index=gi(pen_density_opts, 'fatteningPenDensity', pen_density_opts[1]))
+                s_dict['breedingPenSize'] = rc2.selectbox("번식우방 크기", pen_size_opts, placeholder="(미입력)", index=gi(pen_size_opts, 'breedingPenSize', pen_size_opts[0]))
+                s_dict['breedingPenDensity'] = rc2.selectbox("번식우방 밀도", pen_density_opts, placeholder="(미입력)", index=gi(pen_density_opts, 'breedingPenDensity', pen_density_opts[1]))
+                s_dict['calfPenSize'] = rc3.selectbox("송아지우방 크기", pen_size_opts, placeholder="(미입력)", index=gi(pen_size_opts, 'calfPenSize', pen_size_opts[0]))
+                s_dict['calfPenDensity'] = rc3.selectbox("송아지우방 밀도", pen_density_opts, placeholder="(미입력)", index=gi(pen_density_opts, 'calfPenDensity', pen_density_opts[1]))
 
                 st.markdown("---")
                 yes_no_opts = ["여","부"]
@@ -2954,7 +2960,7 @@ elif menu == "2단계 · 현장방문조사":
                 s_dict['castrationAge'] = c_env1.number_input("거세시기 (개월)", value=int(gv('castrationAge', 0)))
                 s_dict['castrationMethod'] = c_env2.radio("거세방법", ["무혈","유혈"], horizontal=True, index=gi(["무혈","유혈"], 'castrationMethod', "무혈"))
                 floor_opts = ["우수","양호","미흡"]
-                s_dict['floorCondition'] = c_env1.selectbox("축사바닥", floor_opts, index=gi(floor_opts, 'floorCondition', "양호"))
+                s_dict['floorCondition'] = c_env1.selectbox("축사바닥", floor_opts, placeholder="(미입력)", index=gi(floor_opts, 'floorCondition', "양호"))
                 s_dict['dewormingCount'] = c_env2.number_input("정기구충 (회/년)", value=int(gv('dewormingCount', 0)))
 
                 st.markdown("---")
@@ -2963,8 +2969,8 @@ elif menu == "2단계 · 현장방문조사":
                 manure_opts = ["과도하게 묽음", "적정(모양 유지)", "과도하게 단단함"]
                 yes_no2_opts = ["예", "아니오"]
                 c_env3, c_env4 = st.columns(2)
-                s_dict['waterQuality'] = c_env3.selectbox("💧 음수(물) 관리 실태", water_opts, index=gi(water_opts, 'waterQuality', water_opts[1]))
-                s_dict['manureScore'] = c_env4.selectbox("💩 소 분변 상태", manure_opts, index=gi(manure_opts, 'manureScore', manure_opts[1]))
+                s_dict['waterQuality'] = c_env3.selectbox("💧 음수(물) 관리 실태", water_opts, placeholder="(미입력)", index=gi(water_opts, 'waterQuality', water_opts[1]))
+                s_dict['manureScore'] = c_env4.selectbox("💩 소 분변 상태", manure_opts, placeholder="(미입력)", index=gi(manure_opts, 'manureScore', manure_opts[1]))
                 s_dict['troughCleaning'] = st.radio("🍽️ 사조(밥통) 매일 청소 및 잔량 폐기 여부", yes_no2_opts, horizontal=True, index=gi(yes_no2_opts, 'troughCleaning', "예"))
 
             with st.expander("4. 사료급여", expanded=False):
@@ -2972,7 +2978,7 @@ elif menu == "2단계 · 현장방문조사":
                 s_dict['feedOrder'] = c_feed1.text_input("급여순서", value=gv('feedOrder', ""), placeholder="예: 조사료 → 배합사료")
                 s_dict['feedFrequency'] = c_feed2.number_input("급여횟수 (회/일)", value=int(gv('feedFrequency', 2)))
                 forage_opts = ["우수(알팔파, 티모시 등 수입산 위주)", "보통(볏짚/라이그라스 혼합)", "미흡(수분 과다, 곰팡이 관찰)"]
-                s_dict['forageQuality'] = st.selectbox("🌾 조사료의 품질(질) 평가", forage_opts, index=gi(forage_opts, 'forageQuality', forage_opts[1]))
+                s_dict['forageQuality'] = st.selectbox("🌾 조사료의 품질(질) 평가", forage_opts, placeholder="(미입력)", index=gi(forage_opts, 'forageQuality', forage_opts[1]))
                 st.markdown("**(아래 표를 클릭하여 품목과 급여수준(낮음/적정/높음)을 직접 입력하세요)**")
                 feed_index = ["배합사료 품목", "배합사료 급여수준", "조사료 품목", "조사료 급여수준", "첨가제 품목", "첨가제 급여수준"]
                 feed_cols = [c['label'] for c in FEED_CATS]
@@ -3012,15 +3018,17 @@ elif menu == "2단계 · 현장방문조사":
 
             submitted = st.form_submit_button("💾 방문조사 수정사항 저장" if edit_visit_id else "💾 종합 현장 조사표 DB 저장")
             if submitted:
+                s_dict = keep_original_blanks(s_dict)
                 conn = get_db()
                 cur = conn.cursor()
                 if edit_visit_id:
                     cur.execute("UPDATE visits SET visit_date = ?, consultant_name = ? WHERE id = ?",
                                 (s_dict['visitDate'], s_dict['investigator'], edit_visit_id))
+                    # 양식에 없는 기존 키(엑셀에서 옮긴 '_extra' 등)는 지우지 않고 남긴다 (예전엔 수정 저장하면 사라졌다)
                     cur.execute("""
                     INSERT INTO field_surveys (visit_id, survey_data) VALUES (?, ?)
                     ON CONFLICT(visit_id) DO UPDATE SET survey_data = excluded.survey_data
-                    """, (edit_visit_id, json.dumps(s_dict, ensure_ascii=False)))
+                    """, (edit_visit_id, json.dumps({**existing, **s_dict}, ensure_ascii=False)))
                     conn.commit()
                     conn.close()
                     notify_saved(f"방문 기록(ID {edit_visit_id})이 수정되어 저장되었습니다!", "현장조사 수정 저장")
