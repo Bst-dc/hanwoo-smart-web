@@ -1,11 +1,12 @@
 // 한우 스마트컨설팅 화면 — 로그인, 농가 선택, 메뉴 전환을 맡고 각 메뉴 화면은 pages/*.js 가 그린다.
 import { api, esc, notifySaved, state } from "./api.js";
 import { renderDashboard } from "./pages/dashboard.js";
+import { renderShipments } from "./pages/shipments.js";
 
 // ---------- 메뉴 ----------
 const MENUS = [
   { id: "dashboard", label: "종합 현황 대시보드", render: renderDashboard },
-  { id: "shipments", label: "1단계 · 출하성적 비교분석" },
+  { id: "shipments", label: "1단계 · 출하성적 비교분석", render: renderShipments },
   { id: "survey", label: "2단계 · 현장방문조사" },
   { id: "report", label: "3단계 · AI 리포트" },
   { id: "backup", label: "데이터 관리 · 백업" },

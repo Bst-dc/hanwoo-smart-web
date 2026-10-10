@@ -9,7 +9,9 @@ export async function api(path, options = {}) {
   const res = await fetch(API_BASE + path, {
     credentials: "include",                       // 로그인 쿠키
     ...options,
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    // 파일 업로드(FormData)는 브라우저가 경계값을 넣은 Content-Type 을 직접 붙여야 한다
+    headers: options.body instanceof FormData ? { ...(options.headers || {}) }
+      : { "Content-Type": "application/json", ...(options.headers || {}) },
   });
   if (res.status === 401 && !path.startsWith("/api/auth/")) {
     state.onUnauthorized();
@@ -23,6 +25,24 @@ export async function api(path, options = {}) {
     throw err;
   }
   return body;
+}
+
+// 서버가 만든 파일(인쇄 리포트 등)을 내려받는다. 로그인 쿠키가 필요해서 링크 대신 fetch 로 받는다.
+export async function apiDownload(path, filename) {
+  const res = await fetch(API_BASE + path, { credentials: "include" });
+  if (res.status === 401) {
+    state.onUnauthorized();
+    throw new Error("로그인이 필요합니다.");
+  }
+  if (!res.ok) throw new Error(`내려받기 실패 (${res.status})`);
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // 저장 결과 안내 (기존 앱 notify_saved/show_flash): 저장 성공 문구 + GitHub 백업 결과.
