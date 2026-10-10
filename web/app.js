@@ -2,12 +2,13 @@
 import { api, esc, notifySaved, state } from "./api.js";
 import { renderDashboard } from "./pages/dashboard.js";
 import { renderShipments } from "./pages/shipments.js";
+import { renderSurvey } from "./pages/survey.js";
 
 // ---------- 메뉴 ----------
 const MENUS = [
   { id: "dashboard", label: "종합 현황 대시보드", render: renderDashboard },
   { id: "shipments", label: "1단계 · 출하성적 비교분석", render: renderShipments },
-  { id: "survey", label: "2단계 · 현장방문조사" },
+  { id: "survey", label: "2단계 · 현장방문조사", render: renderSurvey },
   { id: "report", label: "3단계 · AI 리포트" },
   { id: "backup", label: "데이터 관리 · 백업" },
 ];

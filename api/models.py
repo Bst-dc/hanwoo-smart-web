@@ -1,7 +1,8 @@
 """요청·응답 데이터 구조 (Pydantic)."""
+from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ---------- 로그인 ----------
@@ -190,3 +191,92 @@ class Comparison(BaseModel):
     profit: Profit | None = None
     recent: list[RecentYear] = Field(default_factory=list, description="최근 3개 연도 농가 vs 전국")
     records: list[ShipmentRecord] = Field(description="개체별 성적 (선택한 성별 그대로, 도축일 최근 순)")
+
+
+# ---------- 2단계 · 현장방문조사 ----------
+def Text():
+    return Field("", max_length=200)
+
+
+def Count():
+    return Field(0, ge=0, le=100000)
+
+
+class SurveyData(BaseModel):
+    """조사표 한 장. 키 이름·순서·값 종류(int/float/str)는 기존 앱이 저장하던 JSON 과 같다."""
+    model_config = ConfigDict(extra="forbid")
+
+    # 1. 조사 기본정보
+    investigator: str = Text()
+    visitDate: date
+    memberName: str = Text()
+    memberId: str = Text()
+    region: str = Text()
+    farmType: str = Text()
+    bizGoal: str = Text()
+    # 2. 날씨 정보
+    dailyAvgTemp: float = 0.0
+    highTemp: float = 0.0
+    lowTemp: float = 0.0
+    annualPrecip: float = Field(0.0, ge=0)
+    avgWindSpeed: float = Field(0.0, ge=0)
+    avgHumidity: float = Field(0.0, ge=0, le=100)
+    # 3. 축산 사육환경
+    breedingType: str = Text()
+    fatteningPenSize: str = Text()
+    fatteningPenDensity: str = Text()
+    breedingPenSize: str = Text()
+    breedingPenDensity: str = Text()
+    calfPenSize: str = Text()
+    calfPenDensity: str = Text()
+    bulkBin: str = Text()
+    autoFeeder: str = Text()
+    tmr: str = Text()
+    selfMix: str = Text()
+    castrationAge: int = Field(0, ge=0, le=100)
+    castrationMethod: str = Text()
+    floorCondition: str = Text()
+    dewormingCount: int = Field(0, ge=0, le=100)
+    waterQuality: str = Text()
+    manureScore: str = Text()
+    troughCleaning: str = Text()
+    # 4. 사료급여
+    feedOrder: str = Text()
+    feedFrequency: int = Field(2, ge=0, le=100)
+    forageQuality: str = Text()
+    feed_matrix: dict[str, dict[str, str]] = Field(default_factory=dict, description="{성장단계: {행: 값}}")
+    # 5. 사육두수 현황
+    countCow: int = Count()
+    countSteer: int = Count()
+    countGrowing: int = Count()
+    countCalf: int = Count()
+    countOptimal: int = Count()
+    # 6~8. 번식관리·질병예방·특이사항
+    aiMethod: str = Text()
+    calvingInterval: float = Field(0.0, ge=0, le=100)
+    mortalityRate: float = Field(0.0, ge=0, le=100)
+    weaningAge: float = Field(0.0, ge=0, le=100)
+    artificialRearing: str = Text()
+    consultingNotes: str = Field("", max_length=5000)
+
+
+class VisitSummary(BaseModel):
+    id: int
+    visit_number: int
+    visit_date: str
+    consultant_name: str | None
+    has_survey: bool = Field(description="조사표 내용이 있는지 — 없으면 빈 양식으로 연다")
+
+
+class VisitDetail(BaseModel):
+    id: int
+    farm_id: int
+    visit_number: int
+    visit_date: str
+    survey: dict = Field(description="저장된 조사표 그대로 (양식에 없는 키 포함). 비어 있으면 {}")
+
+
+class VisitSaved(BaseModel):
+    visit_id: int
+    visit_number: int
+    backup: BackupStatus
