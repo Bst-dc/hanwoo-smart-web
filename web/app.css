@@ -1,0 +1,3 @@
+/* Tailwind 로 표현하기 번거로운 것만 둔다. */
+.menu-item[aria-current="page"] { background: #E6F0EC; color: #2E6B57; font-weight: 600; }
+.kpi-value { font-variant-numeric: tabular-nums; }

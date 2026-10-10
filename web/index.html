@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>한우 스마트컨설팅</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <!-- 한우 업무 시스템 공통 디자인 (hanwoo-portal/theme/hanwoo-theme.css 와 같은 값) — 밝은 화면 고정, 스마트컨설팅 강조색 녹색 -->
+  <style type="text/tailwindcss">
+    @theme {
+      --font-sans: "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+      --color-brand: #2E6B57;
+      --color-brand-tint: #E6F0EC;
+      --color-page: #F6F5F1;
+      --color-panel: #F0EEE8;
+      --color-line: #E2DFD6;
+      --color-ink: #1E1F1C;
+      --color-muted: #77766E;
+      --color-pos: #2E6B57;
+      --color-neg: #9A4F3A;
+      --color-farm: #2A78D6;
+      --color-nat: #A8A69D;
+      --color-cow: #D95926;
+    }
+  </style>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body class="bg-page text-ink font-sans antialiased">
+
+  <!-- 공통 머리글: 네 시스템 바로가기 -->
+  <header class="bg-white border-b border-line">
+    <div class="max-w-[1440px] mx-auto px-4 h-12 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="w-7 h-7 shrink-0 rounded-md bg-brand text-white text-sm font-bold grid place-items-center" aria-hidden="true">컨</span>
+        <a class="text-sm text-muted hover:text-brand hidden sm:inline" href="https://bst-dc.github.io/hanwoo-portal/" target="_blank" rel="noopener noreferrer">한우 업무 포털</a>
+        <span class="text-line hidden sm:inline" aria-hidden="true">/</span>
+        <span class="text-sm font-semibold truncate">한우 스마트컨설팅</span>
+      </div>
+      <nav class="flex items-center gap-1 text-sm" aria-label="다른 시스템">
+        <a class="px-2 py-1 rounded hover:bg-panel" href="https://testfarm.3-38-225-111.sslip.io/" target="_blank" rel="noopener noreferrer">시험농장</a>
+        <a class="px-2 py-1 rounded bg-brand-tint text-brand font-semibold" aria-current="page" href="#">스마트컨설팅</a>
+        <a class="px-2 py-1 rounded hover:bg-panel" href="https://bst-dc.github.io/hanwoo-portal/market/" target="_blank" rel="noopener noreferrer">시세전망</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 로그인 화면 (APP_PASSWORD 가 있을 때만) -->
+  <section id="login" class="hidden max-w-sm mx-auto mt-24 px-4">
+    <h1 class="text-2xl font-bold mb-1">🔒 한우 스마트 컨설팅</h1>
+    <p class="text-sm text-muted mb-6">대구축협 지도컨설팅 직원 전용입니다. 접속 비밀번호를 입력하세요.</p>
+    <form id="login-form" class="space-y-3">
+      <label class="block text-sm font-medium" for="login-pw">접속 비밀번호</label>
+      <input id="login-pw" type="password" autocomplete="current-password" required
+             class="w-full rounded-lg border border-line bg-white px-3 py-2 focus:outline-2 focus:outline-brand">
+      <p id="login-error" class="hidden text-sm text-neg"></p>
+      <button class="w-full rounded-lg bg-brand text-white py-2 font-semibold hover:opacity-90">들어가기</button>
+    </form>
+  </section>
+
+  <!-- 본 화면 -->
+  <div id="app" class="hidden">
+  <div class="max-w-[1440px] mx-auto px-4 py-4 md:flex md:gap-6">
+    <aside class="md:w-64 md:shrink-0 space-y-4 mb-4 md:mb-0">
+      <div class="rounded-xl bg-white border border-line p-4">
+        <div class="text-xs text-muted">대구축협 지도컨설팅</div>
+        <div class="font-bold">한우 스마트 컨설팅</div>
+        <div class="text-xs text-muted">현장조사 · AI 진단 통합관리</div>
+      </div>
+      <div class="rounded-xl bg-white border border-line p-4 space-y-2">
+        <label for="farm-select" class="block text-sm font-medium">현재 컨설팅 농가 선택</label>
+        <select id="farm-select" class="w-full rounded-lg border border-line bg-white px-2 py-2 text-sm"></select>
+      </div>
+      <details id="farm-new" class="rounded-xl bg-white border border-line p-4">
+        <summary class="cursor-pointer text-sm font-semibold">➕ 신규 농가 등록</summary>
+        <form id="farm-form" class="space-y-2 mt-3 text-sm" novalidate>
+          <label class="block">조합원 번호<input name="farm_code" placeholder="예: M1234" class="mt-1 w-full rounded-lg border border-line px-2 py-1.5"></label>
+          <label class="block">농가명*<input name="farm_name" required placeholder="예: 한우사랑농장" class="mt-1 w-full rounded-lg border border-line px-2 py-1.5"></label>
+          <label class="block">대표자명<input name="owner_name" placeholder="홍길동" class="mt-1 w-full rounded-lg border border-line px-2 py-1.5"></label>
+          <label class="block">지역<input name="region" placeholder="강원 횡성" class="mt-1 w-full rounded-lg border border-line px-2 py-1.5"></label>
+          <label class="block">사육형태
+            <select name="breeding_type" class="mt-1 w-full rounded-lg border border-line bg-white px-2 py-1.5">
+              <option>비육우</option><option>일관사육</option><option>번식우</option></select></label>
+          <label class="block">사육두수<input name="total_heads" type="number" min="0" value="100" class="mt-1 w-full rounded-lg border border-line px-2 py-1.5"></label>
+          <div id="farm-dup" class="hidden rounded-lg bg-[#FBF3E6] p-2 text-xs"></div>
+          <p id="farm-error" class="hidden text-xs text-neg"></p>
+          <button class="w-full rounded-lg bg-brand text-white py-2 font-semibold disabled:opacity-40">신규 농가 저장</button>
+        </form>
+      </details>
+      <nav id="menu" class="rounded-xl bg-white border border-line p-2 space-y-1" aria-label="컨설팅 프로세스"></nav>
+      <button id="logout" class="hidden w-full rounded-lg border border-line bg-white py-2 text-sm hover:bg-panel">🔒 로그아웃</button>
+    </aside>
+    <main class="flex-1 min-w-0"><div id="flash"></div><div id="page"></div></main>
+  </div>
+  </div>
+
+  <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-ink text-white px-4 py-2 text-sm shadow-lg"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
