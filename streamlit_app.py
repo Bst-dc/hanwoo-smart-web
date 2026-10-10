@@ -33,56 +33,71 @@ st.set_page_config(
 # 모던 스타일 커스텀 CSS
 st.markdown("""
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/wanteddev/wanted-sans@v1.0.3/packages/wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.min.css">
 <style>
     /* =========================================================================
-       디자인 토큰 — 세이지그린 · 크림 팔레트 ("한우 컨설팅 대시보드 v1" 목업 반영)
-       - 강조색은 세이지그린(브랜드) 하나로 통일한다. 초록/적갈은 장식이 아니라
+       디자인 토큰 — 한우 업무 시스템 공통 기준(hanwoo-portal/theme/hanwoo-theme.css)과 같은 값.
+       밝은 화면 고정, 스마트컨설팅 강조색은 녹색. 값을 바꾸면 .streamlit/config.toml 과
+       아래 CHART_* 상수도 함께 바꿀 것.
+       - 강조색은 녹색(브랜드) 하나로 통일한다. 초록/적갈은 장식이 아니라
          손익 부호(+/-)를 나타낼 때만 쓴다.
-       - 모서리 반경은 3단계만 쓴다: sm=배지/입력, md=버튼/메뉴, lg=카드/헤더
+       - 모서리 반경: sm=입력·버튼(8px), md·lg=카드·메뉴(12px)
        ========================================================================= */
     :root {
-        --brand-900: #2B2B28;
-        --brand-800: #5E7F66;
-        --brand-700: #4A6F8A;
-        --brand-500: #5E6F55;
-        --brand-50:  #E6EFE3;
+        --brand-900: #1E1F1C;
+        --brand-800: #2E6B57;
+        --brand-700: #2E6B57;
+        --brand-500: #2E6B57;
+        --brand-50:  #E6F0EC;
 
-        --ink-900: #2B2B28;
-        --ink-700: #4A4741;
-        --ink-500: #77726A;
-        --ink-400: #8F897E;
-        --line:    #E4DBCB;
-        --surface: #FBF8F2;
-        --tint:      #E6EFE3;
-        --tint-line: #CFDCCB;
-        --tint-hover: #DCE8D8;
+        --ink-900: #1E1F1C;
+        --ink-700: #4A4B45;
+        --ink-500: #77766E;
+        --ink-400: #8F8D85;
+        --line:    #E2DFD6;
+        --surface: #FFFFFF;
+        --surface-2: #F0EEE8;
+        --page:    #F6F5F1;
+        --tint:      #FFFFFF;
+        --tint-line: #E2DFD6;
+        --tint-hover: #E6F0EC;
 
         /* 손익 표기 전용(장식 금지). 밝은 배경에서 WCAG AA를 통과하는 농도로 잡는다 */
-        --pos: #3F6B46;
+        --pos: #2E6B57;
         --neg: #9A4F3A;
 
-        --r-sm: 10px;
-        --r-md: 14px;
-        --r-lg: 18px;
+        --r-sm: 8px;
+        --r-md: 12px;
+        --r-lg: 12px;
     }
 
     html, body, [class*="css"] {
-        font-family: 'Wanted Sans Variable', 'Pretendard', system-ui, sans-serif;
+        font-family: 'Pretendard', 'Malgun Gothic', 'Apple SD Gothic Neo', system-ui, sans-serif;
     }
     [data-testid="stAppViewContainer"], .stApp {
-        background:
-            radial-gradient(1200px 700px at 0% 0%, #B0CDB7 0%, transparent 60%),
-            radial-gradient(1000px 800px at 100% 100%, #ABC4D8 0%, transparent 60%),
-            linear-gradient(135deg, #C6D8C3 0%, #C0D2DF 100%);
-        background-attachment: fixed;
+        background: var(--page);
         color: var(--ink-900);
     }
     [data-testid="stHeader"] { background: transparent; }
     section[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, rgba(166,198,174,.8) 0%, rgba(160,186,210,.8) 100%);
-        border-right: 1px solid #C9D6D2;
+        background: var(--surface-2);
+        border-right: 1px solid var(--line);
     }
+
+    /* ===== 공통 머리글 (포털·시험농장·시세전망과 같은 모양) ===== */
+    .hw-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 24px;
+        min-height: 60px; box-sizing: border-box; padding: 10px 20px; margin-bottom: 20px;
+        background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); }
+    .hw-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .hw-mark { width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px; background: var(--brand-800); color: #FFFFFF;
+        display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; }
+    .hw-bar a.hw-portal { font-size: 14px; color: var(--ink-500); text-decoration: none; }
+    .hw-bar a.hw-portal:hover { color: var(--ink-900); }
+    .hw-sep { color: #A8A69D; }
+    .hw-app { font-size: 17px; font-weight: 700; color: var(--ink-900); }
+    .hw-nav { display: flex; gap: 20px; font-size: 14px; font-weight: 500; }
+    .hw-bar .hw-nav a { color: var(--ink-700); text-decoration: none; padding: 4px 0; border-bottom: 2px solid transparent; }
+    .hw-bar .hw-nav a:hover { color: var(--ink-900); }
+    .hw-bar .hw-nav a[aria-current="page"] { color: var(--brand-800); font-weight: 700; border-bottom-color: var(--brand-800); }
     [data-testid="stSidebarUserContent"] {
         padding: 28px 10px 24px 10px;
     }
@@ -98,7 +113,7 @@ st.markdown("""
         gap: 12px;
         padding-bottom: 32px;
         margin-bottom: 8px;
-        border-bottom: 1px solid #DDD3C2;
+        border-bottom: 1px solid var(--line);
     }
     .page-kicker {
         font-size: 13px;
@@ -167,7 +182,7 @@ st.markdown("""
     div[data-testid="stMetric"]:hover {
         transform: translateY(-3px);
         box-shadow: 0 12px 24px -14px rgba(60, 55, 40, 0.35);
-        border-color: #A9B39C;
+        border-color: var(--brand-800);
     }
     table, .stDataFrame, div[data-testid="stTable"] { font-variant-numeric: tabular-nums; }
 
@@ -207,7 +222,7 @@ st.markdown("""
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, var(--brand-800) 0%, var(--brand-700) 100%);
+        background: var(--brand-800);
         border-radius: var(--r-md);
     }
     .sb-brand-mark svg { width: 34px; height: 34px; }
@@ -217,7 +232,7 @@ st.markdown("""
         font-size: 11px;
         font-weight: 600;
         letter-spacing: 0.08em;
-        color: #6E7A64;
+        color: var(--ink-500);
         margin-bottom: 2px;
     }
     .sb-brand-name {
@@ -249,11 +264,11 @@ st.markdown("""
         color: var(--ink-500);
     }
     section[data-testid="stSidebar"] [data-testid="stSelectbox"] > div > div {
-        background-color: #F8F4EC !important;
+        background-color: var(--surface) !important;
     }
     /* '＋ 신규 농가 등록'은 스펙상 점선 테두리 버튼이다 (Streamlit expander로 구현돼 있음) */
     section[data-testid="stSidebar"] div[data-testid="stExpander"] {
-        border: 1px dashed #A9B39C !important;
+        border: 1px dashed #C9C6BC !important;
         background: transparent !important;
         border-radius: var(--r-sm) !important;
     }
@@ -262,7 +277,7 @@ st.markdown("""
         font-weight: 500;
     }
     section[data-testid="stSidebar"] div[data-testid="stExpander"] summary:hover {
-        background-color: #E3E6D9;
+        background-color: var(--tint-hover);
     }
     section[data-testid="stSidebar"] div[role="radiogroup"] {
         display: flex;
@@ -281,14 +296,14 @@ st.markdown("""
         transition: background-color 0.25s ease, color 0.25s ease;
     }
     section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
-        background-color: #E3E6D9;
+        background-color: var(--tint-hover);
     }
     section[data-testid="stSidebar"] div[role="radiogroup"] label[data-selected="true"],
     section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
-        background: linear-gradient(135deg, var(--brand-800) 0%, var(--brand-700) 100%);
+        background: var(--brand-800);
     }
     section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) div[data-testid="stMarkdownContainer"] p {
-        color: #F4EFE6;
+        color: #FFFFFF;
         font-weight: 600;
     }
     section[data-testid="stSidebar"] div[role="radiogroup"] label > div > div:first-child {
@@ -330,7 +345,7 @@ st.markdown("""
         display: inline-flex;
         gap: 4px;
         padding: 4px;
-        background: #EDE6D9;
+        background: var(--surface-2);
         border-radius: 999px;
     }
     section[data-testid="stMain"] div[role="radiogroup"] label {
@@ -346,7 +361,7 @@ st.markdown("""
         background: var(--ink-900);
     }
     section[data-testid="stMain"] div[role="radiogroup"] label:has(input:checked) div[data-testid="stMarkdownContainer"] p {
-        color: #F4EFE6;
+        color: #FFFFFF;
         font-weight: 600;
     }
     section[data-testid="stMain"] div[role="radiogroup"] label > div > div:first-child { display: none; }
@@ -363,7 +378,7 @@ st.markdown("""
         color: var(--ink-900);
     }
     div[data-testid="stExpander"] summary:hover {
-        background-color: #EDE6D9;
+        background-color: var(--surface-2);
     }
 
     /* ===== 입력 요소 표면 — BaseWeb이 흰색을 직접 지정하는 날짜/숫자 입력까지 아이보리로 ===== */
@@ -381,7 +396,7 @@ st.markdown("""
     [data-testid="stFileUploaderDropzone"],
     [data-testid="stSelectbox"] > div > div,
     [data-testid="stMultiSelect"] > div > div {
-        border: 1px solid #D6CCBA !important;
+        border: 1px solid #D5D1C6 !important;
         background-color: var(--surface) !important;
     }
     [data-testid="stTextInputRootElement"]:focus-within,
@@ -391,7 +406,7 @@ st.markdown("""
     [data-testid="stSelectbox"] > div > div:focus-within,
     [data-testid="stMultiSelect"] > div > div:focus-within {
         border-color: var(--brand-500) !important;
-        box-shadow: 0 0 0 3px rgba(94, 111, 85, 0.14);
+        box-shadow: 0 0 0 3px rgba(46, 107, 87, 0.14);
     }
 
     /* ===== 탭/버튼 기본 색 정리 ===== */
@@ -442,22 +457,33 @@ def cow_mark(size: int = 64) -> str:
 </svg>"""
 
 
-# 차트 색상: 위 CSS 디자인 토큰과 같은 값을 쓴다 (Vega는 CSS 변수를 못 읽어서 한 벌 더 둔다)
-CHART_FARM = "#5E6F55"      # 농가 실적 = 브랜드 세이지
-CHART_NAT = "#B9B1A3"       # 전국 평균 = 무채색 웜그레이 (비교 기준선이라 눈에 덜 띄게)
-CHART_COW = "#C98B76"
-CHART_BULL = "#7F9BB0"      # 수소. 색 지정이 없으면 막대가 통째로 안 그려진다
-CHART_GRID = "#E4DBCB"
-CHART_LABEL = "#77726A"
-CHART_MUTED = "#8F897E"
-CHART_SURFACE = "#FBF8F2"
-CHART_FONT = "Wanted Sans Variable, Pretendard, system-ui, sans-serif"
+# 차트 색상: 한우 업무 시스템 공통 그래프 색 (네 시스템이 같은 순서로 쓴다: 1번 파랑, 2번 주황, 기준선 회색)
+# Vega는 CSS 변수를 못 읽어서 한 벌 더 둔다
+CHART_FARM = "#2A78D6"      # 농가 실적 = 1번 계열
+CHART_NAT = "#A8A69D"       # 전국 평균 = 기준선 회색 (비교 기준선이라 눈에 덜 띄게)
+CHART_COW = "#D95926"       # 2번 계열
+CHART_BULL = "#77766E"      # 수소. 색 지정이 없으면 막대가 통째로 안 그려진다
+CHART_GRID = "#E2DFD6"
+CHART_LABEL = "#77766E"
+CHART_MUTED = "#8F8D85"
+CHART_SURFACE = "#FFFFFF"
+CHART_FONT = "Pretendard, Malgun Gothic, system-ui, sans-serif"
 
 
 def page_header(title: str, desc: str = "") -> None:
-    """페이지 머리글. 브랜드 표기는 사이드바가 전담하므로 본문에는 키커 한 줄만 남긴다."""
+    """페이지 머리글. 맨 위에 네 시스템 공통 머리글(포털·시험농장·시세전망 바로가기)을 두고,
+    그 아래에 지금 보고 있는 화면의 키커·제목·설명을 둔다."""
     desc_html = f"<p class='page-desc'>{desc}</p>" if desc else ""
     st.markdown(
+        "<header class='hw-bar'><div class='hw-brand'>"
+        "<span class='hw-mark' aria-hidden='true'>컨</span>"
+        "<a class='hw-portal' href='https://bst-dc.github.io/hanwoo-portal/' target='_blank' rel='noopener noreferrer'>한우 업무 포털</a>"
+        "<span class='hw-sep' aria-hidden='true'>/</span><span class='hw-app'>한우 스마트컨설팅</span></div>"
+        "<nav class='hw-nav' aria-label='다른 시스템'>"
+        "<a href='https://testfarm-npkhanj8fxh69lfasahgu5.streamlit.app/' target='_blank' rel='noopener noreferrer'>시험농장</a>"
+        "<a aria-current='page' href='#'>스마트컨설팅</a>"
+        "<a href='https://bst-dc.github.io/hanwoo-portal/market/' target='_blank' rel='noopener noreferrer'>시세전망</a>"
+        "</nav></header>"
         "<header class='page-header'>"
         "<span class='page-kicker'>대구축협 지도컨설팅 · 한우 스마트 AI 전문 플랫폼</span>"
         f"<h1 class='page-title'>{title}</h1>{desc_html}</header>",
@@ -2687,7 +2713,7 @@ elif menu == "1단계 · 출하성적 비교분석":
                 trend_chart = alt.Chart(trend_df).mark_line(point=True, strokeWidth=3).encode(
                     x=alt.X('연도:N', axis=alt.Axis(labelAngle=0, title='')),
                     y=alt.Y('값:Q', title=trend_metric, scale=alt.Scale(zero=False)),
-                    color=alt.Color('구분:N', scale=alt.Scale(range=['#1e3a8a', '#94a3b8']), legend=alt.Legend(orient='bottom', title=None))
+                    color=alt.Color('구분:N', scale=alt.Scale(range=[CHART_FARM, CHART_NAT]), legend=alt.Legend(orient='bottom', title=None))
                 ).properties(height=320)
                 st.altair_chart(trend_chart, width="stretch")
 

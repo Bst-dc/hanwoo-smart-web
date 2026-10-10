@@ -1,14 +1,15 @@
+# 한우 업무 시스템 공통 디자인 기준 (hanwoo-portal/theme/hanwoo-theme.css) — 밝은 화면 고정, 스마트컨설팅 강조색 녹색
 [theme]
 base = "light"
-primaryColor = "#5E6F55"
-backgroundColor = "#F4EFE6"
-secondaryBackgroundColor = "#FBF8F2"
-textColor = "#2B2B28"
+primaryColor = "#2E6B57"
+backgroundColor = "#F6F5F1"
+secondaryBackgroundColor = "#F0EEE8"
+textColor = "#1E1F1C"
 font = "sans serif"
-baseRadius = "10px"
-borderColor = "#E4DBCB"
-dataframeBorderColor = "#E9E1D3"
-dataframeHeaderBackgroundColor = "#F4EFE6"
+baseRadius = "8px"
+borderColor = "#E2DFD6"
+dataframeBorderColor = "#E2DFD6"
+dataframeHeaderBackgroundColor = "#F0EEE8"
 
 [server]
 headless = true
