@@ -11,6 +11,7 @@ import json
 import re
 import base64
 import hashlib
+import hmac
 from datetime import datetime, timezone
 import urllib.request
 import urllib.parse
@@ -510,6 +511,53 @@ def style_chart(chart):
         )
         .configure_text(font=CHART_FONT)
     )
+
+
+# -----------------------------------------------------------------------------
+# 1-1. 접속 비밀번호 (시험농장 앱 require_password 와 같은 방식)
+# -----------------------------------------------------------------------------
+# secrets(또는 환경변수)에 APP_PASSWORD 가 있으면 비밀번호를 맞혀야 화면이 열린다.
+# 없으면(로컬 PC) 묻지 않는다. DB에 붙기 전에 막아서, 로그인 전 방문자는 DB 연결조차 하지 않는다.
+def _app_password():
+    try:
+        if "APP_PASSWORD" in st.secrets:
+            return str(st.secrets["APP_PASSWORD"]) or None
+    except Exception:
+        pass
+    return os.environ.get("APP_PASSWORD") or None
+
+def _clear_login_inputs():
+    """입력했던 비밀번호를 세션에서 지운다. 남겨 두면 로그아웃 뒤 그 값으로 저절로 다시 로그인된다."""
+    for k in [k for k in st.session_state.keys() if str(k).startswith("login_pw")]:
+        del st.session_state[k]
+
+def require_password():
+    app_pw = _app_password()
+    if not app_pw:
+        return
+    if st.session_state.get("_authed"):
+        _clear_login_inputs()
+        return
+    _, mid, _ = st.columns([1, 2, 1])
+    with mid:
+        st.markdown("## 🔒 한우 스마트 컨설팅")
+        st.caption("대구축협 지도컨설팅 직원 전용입니다. 접속 비밀번호를 입력하세요.")
+        # 로그아웃할 때마다 새 입력칸(key)을 써서, 예전에 입력한 값이 다시 채워지지 않게 한다.
+        pw = st.text_input("접속 비밀번호", type="password",
+                           key=f"login_pw_{st.session_state.get('_login_nonce', 0)}")
+        if pw:
+            if hmac.compare_digest(pw.encode("utf-8"), app_pw.encode("utf-8")):
+                st.session_state["_authed"] = True
+                st.rerun()
+            st.error("비밀번호가 올바르지 않습니다.")
+    st.stop()
+
+def logout():
+    st.session_state.pop("_authed", None)
+    st.session_state["_login_nonce"] = st.session_state.get("_login_nonce", 0) + 1
+    _clear_login_inputs()
+
+require_password()
 
 
 # -----------------------------------------------------------------------------
@@ -2016,6 +2064,11 @@ with st.sidebar:
         <div class="sb-foot-note">축산물품질평가원 이력제 · 한우컨설팅일지 연동</div>
     </div>
     """, unsafe_allow_html=True)
+
+    if _app_password():
+        if st.button("🔒 로그아웃", width="stretch", key="logout_btn"):
+            logout()
+            st.rerun()
 
 # -----------------------------------------------------------------------------
 # 메뉴 1: 종합 현황 대시보드
