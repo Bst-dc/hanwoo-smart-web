@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 한우 스마트 컨설팅 통합 웹 플랫폼 (한우컨설팅일지 정밀 양식 연동판)
-Streamlit Cloud 배포용 (https://hanwoo-smart-web-rfkwappjmj7yr4xv6ahuwes.streamlit.app/)
+AWS Lightsail 배포 (https://consulting.3-38-225-111.sslip.io/)
 """
 import streamlit as st
 import pandas as pd
@@ -481,7 +481,7 @@ def page_header(title: str, desc: str = "") -> None:
         "<a class='hw-portal' href='https://bst-dc.github.io/hanwoo-portal/' target='_blank' rel='noopener noreferrer'>한우 업무 포털</a>"
         "<span class='hw-sep' aria-hidden='true'>/</span><span class='hw-app'>한우 스마트컨설팅</span></div>"
         "<nav class='hw-nav' aria-label='다른 시스템'>"
-        "<a href='https://testfarm-npkhanj8fxh69lfasahgu5.streamlit.app/' target='_blank' rel='noopener noreferrer'>시험농장</a>"
+        "<a href='https://testfarm.3-38-225-111.sslip.io/' target='_blank' rel='noopener noreferrer'>시험농장</a>"
         "<a aria-current='page' href='#'>스마트컨설팅</a>"
         "<a href='https://bst-dc.github.io/hanwoo-portal/market/' target='_blank' rel='noopener noreferrer'>시세전망</a>"
         "</nav></header>"

@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-한우 스마트 컨설팅 웹시스템 — a Streamlit app for 대구축협 한우 consulting: 이력제 출하성적 자동 추출 (livestock traceability API), 전국 평균 비교, 모바일 현장조사 입력, and Claude AI 리포트 생성. Deployed on Streamlit Cloud (URL at the top of `streamlit_app.py` and in the README).
+한우 스마트 컨설팅 웹시스템 — a Streamlit app for 대구축협 한우 consulting: 이력제 출하성적 자동 추출 (livestock traceability API), 전국 평균 비교, 모바일 현장조사 입력, and Claude AI 리포트 생성. Deployed on an AWS Lightsail server (URL at the top of `streamlit_app.py`, in the README, and below).
 
 - **All communication (chat, comments, UI text) defaults to Korean.**
 - This folder was split out of the `G:\내 드라이브\한우\` repository on 2026-10-04 (`git subtree split`, history preserved). It is self-contained: nothing reads from sibling folders.
 
-### Deployment layout (2026-10-04)
+### Deployment layout (2026-10-04, server move 2026-10-10)
 
-Live app: https://hanwoo-smart-web-rfkwappjmj7yr4xv6ahuwes.streamlit.app/ (deployed from public repo `Bst-dc/hanwoo-smart-web`, **Python 3.12** — `libsql-experimental` has no wheels for 3.14, and the Python version can only be chosen when an app is created).
+Live app: https://consulting.3-38-225-111.sslip.io/ — AWS Lightsail server (2026-10-10) that also hosts 시험농장; Docker/Caddy config and runbook live in `../aws-deploy/` (`README_배포.md`). The server pulls `main` of public repo `Bst-dc/hanwoo-smart-web` every 2 minutes and rebuilds, so a push deploys. Image is **Python 3.12** — `libsql-experimental` has no wheels for 3.14. The old Streamlit Cloud app (https://hanwoo-smart-web-rfkwappjmj7yr4xv6ahuwes.streamlit.app/) runs in parallel until it is shut down.
 
 Streamlit Community Cloud's free tier allows only **one private app**, and that slot is used by the separate `testfarm` app. So the code is deployed from a **public** repo, and everything sensitive lives in a **private data repo** (`GITHUB_REPO` secret, default `Bst-dc/hanwoo-smart-consulting`):
 

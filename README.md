@@ -2,7 +2,7 @@
 
 농가 이력제 기반 출하성적 자동 추출, 전국 평균 성적과의 1:1 비교분석표, 모바일 현장 방문조사(사양관리·농가대화) 입력, Claude AI 연동 종합 진단 리포트 생성, 그리고 방문 농가 전체 누적 데이터베이스 및 연도별 평균 성적 대시보드를 제공하는 올인원 웹 시스템입니다.
 
-**운영 중 배포 주소**: https://hanwoo-smart-web-rfkwappjmj7yr4xv6ahuwes.streamlit.app/
+**운영 중 배포 주소**: https://consulting.3-38-225-111.sslip.io/
 
 > **저장소 구성** — 이 코드 저장소는 공개이고, 조합원 개인정보가 든 DB 백업과 AI 리포트용 전문자료(knowledge/*.md)는
 > 비공개 데이터 저장소(`GITHUB_REPO` secret)에만 둡니다. 앱이 실행 중에 GitHub API로 읽고 씁니다.
