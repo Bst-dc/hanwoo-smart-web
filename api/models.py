@@ -97,3 +97,96 @@ class GenderCompareRow(BaseModel):
     backfat: float | None = None
     plus1_rate: float | None = None
     month_age: float | None = None
+
+
+# ---------- 1단계 · 출하성적 ----------
+class ShipmentDraft(BaseModel):
+    """이력제 조회 결과 한 두 (저장 전 검토용). 화면에서 고치거나 지운 뒤 그대로 저장 요청에 쓴다."""
+    animal_no: str | None = None
+    gender: str | None = Field(None, description="거세 | 암 | 수. 비어 있으면 저장할 때 거세")
+    costAmt: float | None = Field(None, description="kg 당 단가 (원)")
+    carcass_weight: float | None = None
+    grade_quality: str | None = None
+    grade_yield: str | None = None
+    bms: float | None = None
+    backfat: float | None = None
+    ribeye: float | None = None
+    month_age: float | None = None
+    slaughter_date: str | None = None
+
+
+class EkapeLookupRequest(BaseModel):
+    animal_nos: list[str] = Field(min_length=1, max_length=20, description="한 번에 20두까지 — 화면이 나눠서 보낸다")
+
+
+class EkapeLookupResult(BaseModel):
+    key_configured: bool
+    records: list[ShipmentDraft]
+    not_found: list[str] = Field(description="결과가 없거나 조회에 실패한 번호")
+
+
+class SaveDraftsRequest(BaseModel):
+    records: list[ShipmentDraft] = Field(max_length=1000)
+
+
+class SaveResult(BaseModel):
+    saved: int
+    backup: BackupStatus
+
+
+class ExcelPreview(BaseModel):
+    rows: int
+    columns: list[str]
+    animal_no_column: str | None
+    name_column: str | None
+    mismatched_names: list[str] = Field(description="파일 안 이름 중 선택한 농가와 다른 것 — 있으면 저장 전 확인 필요")
+    will_skip: int = Field(description="이력번호가 없거나 8자 미만이라 건너뛸 행")
+    missing_date: int = Field(description="도축일자를 읽지 못해 2025년으로 들어갈 행")
+    missing_columns: list[str]
+
+
+class ComparisonRow(BaseModel):
+    label: str
+    key: str
+    farm: float | None
+    national: float | None
+    diff: float | None
+    verdict: str
+
+
+class Profit(BaseModel):
+    per_head: int = Field(description="두당 추정 차이 (원) = 도체중 격차 × 21,000원")
+    total: int
+    heads: int
+
+
+class RecentYear(BaseModel):
+    year: int
+    farm: YearMetrics
+    national: YearMetrics
+
+
+class ShipmentRecord(BaseModel):
+    animal_no: str
+    gender: str | None
+    slaughter_date: str | None
+    carcass_weight: float | None
+    grade_quality: str | None
+    grade_yield: str | None
+    bms: float | None
+    backfat: float | None
+    ribeye: float | None
+    month_age: float | None
+
+
+class Comparison(BaseModel):
+    years: list[int] = Field(description="이 농가에 출하가 있는 연도 (최근 순)")
+    year: int | None = Field(description="선택한 연도. null 이면 전체 누적")
+    cmp_gender: str = Field(description="전국 비교에 쓴 성별 — '전체' 를 고르면 거세우(없으면 암소)")
+    gender_caption: str
+    total_count: int = Field(description="비교에 쓴 두수 (cmp_gender 기준)")
+    national_year: int | None = None
+    rows: list[ComparisonRow] = Field(default_factory=list)
+    profit: Profit | None = None
+    recent: list[RecentYear] = Field(default_factory=list, description="최근 3개 연도 농가 vs 전국")
+    records: list[ShipmentRecord] = Field(description="개체별 성적 (선택한 성별 그대로, 도축일 최근 순)")
