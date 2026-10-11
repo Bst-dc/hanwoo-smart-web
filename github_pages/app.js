@@ -80,7 +80,7 @@ function loadFarms() {
 function loadDashboard() {
   document.getElementById("kpiTotalFarms").textContent = `${db.farms.length} 농가`;
   document.getElementById("kpiTotalVisits").textContent = `${db.visits.length} 회`;
-  document.getElementById("kpiTotalShipments").textContent = `${db.shipments.length} 두`;
+  document.getElementById("kpiTotalShipments").textContent = `${db.shipments.length.toLocaleString("ko-KR")} 두`;
 
   const total = db.shipments.length;
   const plusCount = db.shipments.filter(s => s.grade_quality === "1++" || s.grade_quality === "1+").length;
