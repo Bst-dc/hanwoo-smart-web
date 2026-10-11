@@ -2114,7 +2114,7 @@ if menu == "종합 현황 대시보드":
     k1, k2, k3 = st.columns(3)
     k1.metric("총 관리 농가 수", f"{total_farms} 농가")
     k2.metric("누적 현장 방문 횟수", f"{total_visits} 회")
-    k3.metric("누적 분석 출하 두수", f"{total_shipments} 두")
+    k3.metric("누적 분석 출하 두수", f"{total_shipments:,} 두")
     
     st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
     
