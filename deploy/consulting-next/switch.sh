@@ -70,25 +70,35 @@ open(out, "w", encoding="utf-8").write(text)
 EOF
 
 if cmp -s "$new" Caddyfile; then
-  rm -f "$new"
-  echo "Caddyfile 이 그대로라 Caddy 를 다시 읽지 않습니다."
-  exit 0
+  echo "Caddyfile 내용은 이미 원하는 모양입니다. Caddy 가 이 내용을 쓰고 있는지만 확인합니다."
 fi
 [ -s "$new" ]
-chmod --reference=Caddyfile "$new"
-mv "$new" Caddyfile
+# 파일을 바꿔치기(mv)하지 않고 내용만 덮어쓴다. Caddy 컨테이너는 Caddyfile 을 '파일 하나'로 끼워 쓰고 있어서,
+# mv 로 새 파일이 생기면 컨테이너는 계속 옛 파일을 본다 (2026-10-13 첫 실행 때 이 때문에 바뀌지 않았다).
+cat "$new" > Caddyfile
+rm -f "$new"
 echo "--- 바뀐 내용 ---"
 diff "Caddyfile.bak-$stamp" Caddyfile || true
 echo "-----------------"
 
-# Caddy 가 새 설정을 받아들이는지 먼저 검사하고, 안 되면 백업으로 되돌린다
-if ! docker compose exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1; then
-  cp -p "Caddyfile.bak-$stamp" Caddyfile
+# 1) 새 설정을 Caddy 로 먼저 검사한다 (컨테이너 안 임시 파일로). 안 되면 백업으로 되돌리고 멈춘다.
+if ! docker compose exec -T caddy sh -c 'cat > /tmp/Caddyfile.check && caddy validate --config /tmp/Caddyfile.check --adapter caddyfile' < Caddyfile >/dev/null 2>&1; then
+  cat "Caddyfile.bak-$stamp" > Caddyfile
   echo "⚠️ Caddy 가 새 설정을 거부해 백업으로 되돌렸습니다. 아무것도 바뀌지 않았습니다."
-  docker compose exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile || true
+  docker compose exec -T caddy sh -c 'cat > /tmp/Caddyfile.check && caddy validate --config /tmp/Caddyfile.check --adapter caddyfile' < "Caddyfile.bak-$stamp" || true
   exit 1
 fi
-docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+
+# 2) 적용한다. 컨테이너가 옛 파일을 보고 있으면(예전 실행이 mv 로 바꿔 둔 경우) Caddy 를 다시 시작해 파일을 다시 끼우고,
+#    아니면 끊김 없이 설정만 다시 읽는다.
+if docker compose exec -T caddy cat /etc/caddy/Caddyfile | cmp -s - Caddyfile; then
+  docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+else
+  echo "Caddy 컨테이너가 옛 Caddyfile 을 보고 있어 Caddy 를 다시 시작합니다 (모든 주소가 몇 초 끊깁니다)."
+  docker compose restart caddy
+  sleep 3
+  docker compose exec -T caddy cat /etc/caddy/Caddyfile | cmp -s - Caddyfile || { echo "⚠️ 다시 시작해도 컨테이너가 새 Caddyfile 을 보지 못합니다. docker-compose.yml 의 caddy volumes 를 확인하세요."; exit 1; }
+fi
 host=$(grep -E '^BASE_HOST=' .env | cut -d= -f2 || true)
 echo
 if [ "$mode" = switch ]; then
