@@ -7,7 +7,7 @@
 - [x] **축평원 발급일 조회 확인** (2026-10-13 완료)
   - 확인서 번호가 몇 년 뒤 다시 쓰여서, 번호만으로 조회하면 최근 발급된 다른 소의 성적이 나왔습니다.
   - 발급일을 같이 보내도록 두 앱 모두 고쳤습니다. 받은 성적의 이력번호·도축일이 다르면 저장하지 않습니다.
-- [ ] **기존 앱(consulting)에서 엑셀 업로드 쓰지 않기 → 새 앱(consulting-next)에서 올리기**
+- [ ] **기존 앱(이제 consulting-old 주소)에서 엑셀 업로드 쓰지 않기 → 새 앱(consulting 주소)에서 올리기**
   - 기존 앱은 농가출하데이터.xlsx를 올리면 0두 저장인데도 '성공'으로 나옵니다.
   - 여러 농가가 섞인 파일은 지금 고른 농가로 통째로 옮겨 버립니다.
 
@@ -21,7 +21,7 @@
 - [ ] **기존 축평원 저장분 452두 재조회 결과 검토**
   - 조회 코드를 고친 뒤 Claude가 대조표를 만들어 드립니다.
 
-## 3. 새 앱(consulting-next) 사용해 보기
+## 3. 새 앱 사용해 보기 (이제 consulting 주소가 새 앱)
 
 - [ ] **출하성적 첫 실사용 저장**
   - 아무 농가에서 축평원 조회나 엑셀로 1~2두를 저장해 보고 결과를 Claude에게 알려 주세요.
@@ -36,10 +36,11 @@
 
 - [ ] **데이터 메뉴 써 보기** (새로 옮김)
   - 신규 농가 등록, CSV·DB 파일 받기, AI 리포트 '새 탭에서 보기'를 확인해 보세요.
-- [ ] **새 앱으로 전환할지 결정** (모든 메뉴를 옮겼습니다)
-  - 시험농장처럼 `consulting.` 주소를 새 앱으로 바꾸고, 기존 앱은 `consulting-old.` 주소로 한동안 남겨 두는 방식을 권합니다.
-  - 스크립트 준비됨. 서버에서: `sudo bash /opt/hanwoo/apps/consulting/deploy/consulting-next/switch.sh`
-  - 되돌리기: 같은 명령 끝에 ` --rollback`
+- [x] **새 앱으로 전환** (2026-10-13 완료)
+  - `consulting.` 주소 = 새 앱, 기존 앱은 `consulting-old.` 주소에 남겨 둠.
+  - 문제가 있으면 되돌리기: `sudo bash /opt/hanwoo/apps/consulting/deploy/consulting-next/switch.sh --rollback`
+- [ ] **기존 앱(consulting-old) 끌 시점 정하기**
+  - 새 앱을 몇 주 써 보고 문제가 없으면 기존 앱 컨테이너를 끄고 Streamlit Cloud 앱도 정리합니다. 정하시면 Claude가 순서를 준비합니다.
 
 ## 4. monday.com
 
@@ -53,10 +54,10 @@
 - [ ] **GitHub 저장소 Settings → Secrets에서 `LIGHTSAIL_*` 삭제**
   - 자동 배포는 서버가 2분마다 GitHub을 받아 가는 방식으로 바뀌어 더는 쓰지 않습니다.
 - [ ] **서버 `~/.ssh/authorized_keys`에서 `github-deploy` 줄 삭제**
-- [ ] **내 PC 사용자 폴더의 `deploy_key`, `deploy_key.pub` 삭제**
+- [ ] **내 PC 사용자 폴더의 `deploy_key.pub` 삭제** (비밀키 `deploy_key`는 이미 지워짐)
 - [ ] **옛 사본 폴더 `hanwoo-deploy-claude`를 지울지 결정**
   - 서버가 쓰지 않는 9/28 무렵 사본입니다. 원하면 Claude가 남길 것이 있는지 먼저 확인합니다.
 
 ---
 
-Claude가 하는 일: 고친 조회로 80두와 기존 축평원 저장분 452두를 다시 대조합니다.
+Claude가 하는 일: 축평원 연결 제한이 풀리면 기존 축평원 저장분 452두를 고친 조회로 다시 대조합니다 (80두는 끝남).

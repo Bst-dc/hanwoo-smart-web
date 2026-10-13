@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 한우 스마트 컨설팅 통합 웹 플랫폼 (한우컨설팅일지 정밀 양식 연동판)
-AWS Lightsail 배포 (https://consulting.3-38-225-111.sslip.io/)
+AWS Lightsail 배포 (https://consulting-old.3-38-225-111.sslip.io/ — 2026-10-13 부터 consulting 주소는 새 앱(api/·web/)이 쓴다)
 """
 import streamlit as st
 import pandas as pd
