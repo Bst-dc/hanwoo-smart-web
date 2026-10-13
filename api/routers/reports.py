@@ -76,12 +76,16 @@ def report_read(report_id: int, conn=Depends(get_conn)):
 
 
 @router.get("/reports/{report_id}/download")
-def report_download(report_id: int, fmt: Literal["md", "html"] = "html", conn=Depends(get_conn)):
+def report_download(report_id: int, fmt: Literal["md", "html"] = "html", inline: bool = False, conn=Depends(get_conn)):
+    """inline=1 이면 내려받지 않고 브라우저 새 탭에서 바로 연다 (HTML)."""
     r = ai_report.get_report(conn, report_id)
     if r is None:
         raise HTTPException(status_code=404, detail="리포트를 찾을 수 없습니다.")
     name = f"{r['farm']}_AI컨설팅리포트_{r['mode']}.{fmt}"
     body = r["markdown"] if fmt == "md" else ai_report.html_document(r["farm"], r["markdown"], r["mode"])
     media = "text/markdown; charset=utf-8" if fmt == "md" else "text/html; charset=utf-8"
-    return Response(body, media_type=media,
-                    headers={"Content-Disposition": f"attachment; filename*=UTF-8''{urllib.parse.quote(name)}"})
+    how = "inline" if inline and fmt == "html" else "attachment"
+    headers = {"Content-Disposition": f"{how}; filename*=UTF-8''{urllib.parse.quote(name)}"}
+    if how == "inline":   # 리포트 글은 화면에 그대로 넣지 않고 마크다운에서 만든 것이지만, 스크립트는 막아 둔다
+        headers["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'"
+    return Response(body, media_type=media, headers=headers)

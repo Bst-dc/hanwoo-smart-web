@@ -16,7 +16,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from . import auth, config, db
 from .limits import BodyLimitMiddleware
 from .routers import auth as auth_router
-from .routers import dashboard, farms, reports, shipment_input, shipments, surveys
+from .routers import dashboard, data, farms, reports, shipment_input, shipments, surveys
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("consulting.api")
@@ -71,6 +71,7 @@ def health():
 
 
 app.include_router(auth_router.router)
+app.include_router(data.router)          # /api/farms/duplicate 가 /api/farms/{id}/... 보다 먼저
 app.include_router(farms.router)
 app.include_router(dashboard.router)
 app.include_router(shipments.router)

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 
 from ..auth import require_login
 from ..db import get_conn
+from ..services import datamgmt
 
 router = APIRouter(prefix="/api", tags=["농가"], dependencies=[Depends(require_login)])
 
@@ -18,8 +19,9 @@ ORDER BY f.farm_name
 @router.get("/farms")
 def list_farms(conn=Depends(get_conn)):
     rows = conn.execute(FARMS_SQL).fetchall()
+    survey_region = datamgmt.region_from_surveys(conn)      # 기존 앱처럼 조사표의 최근 지역을 우선
     farms = [
-        {"id": r["id"], "name": r["farm_name"], "owner": r["owner_name"] or "", "region": r["region"] or "",
+        {"id": r["id"], "name": r["farm_name"], "owner": r["owner_name"] or "", "region": survey_region.get(r["id"]) or r["region"] or "",
          "breeding_type": r["breeding_type"] or "", "visits": int(r["visit_cnt"] or 0), "shipments": int(r["ship_cnt"] or 0)}
         for r in rows
     ]
