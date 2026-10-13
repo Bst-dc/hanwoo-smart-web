@@ -4,6 +4,7 @@ import { api, card, esc, state, store, toast } from "./api.js";
 import { destroyCharts } from "./charts.js";
 import { renderDashboard } from "./pages/dashboard.js";
 import { renderShipment } from "./pages/shipment.js";
+import { renderSurvey } from "./pages/survey.js";
 
 // ---------- 메뉴 ----------
 // render 가 없는 메뉴는 아직 옮기는 중이다 (기존 Streamlit 앱에서 쓴다).
@@ -74,6 +75,7 @@ async function renderPage() {
     const onSaved = async () => { await loadFarms(); renderFarmSelect(); await renderPage(); };
     if (tab.id === "dashboard") await renderDashboard(el, { farms: state.farms, farmId: state.farmId, isCurrent, onPickFarm });
     else if (tab.id === "shipment") await renderShipment(el, { farm, farms: state.farms, isCurrent, onPickFarm, onSaved });
+    else if (tab.id === "survey") await renderSurvey(el, { farm, farms: state.farms, isCurrent, onPickFarm, onSaved });
     else el.innerHTML = pending(tab);
   } catch (e) {
     if (token === renderToken) el.innerHTML = `<div class="rounded-xl border border-neg/40 bg-white p-4 text-neg text-sm">⚠️ ${esc(e.message)}</div>`;

@@ -15,3 +15,6 @@ input, select, textarea { font-size: 16px; }
 
 /* 표: 가로로 넘치면 표만 옆으로 밀고, 헤더와 값은 같은 정렬 */
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* 조사표 저장 버튼: 아래 메뉴 바로 위에 붙어 다닌다 */
+.savebar { position: sticky; bottom: calc(64px + env(safe-area-inset-bottom)); }
