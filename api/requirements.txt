@@ -1,0 +1,7 @@
+# 새 앱(FastAPI) — 기존 Streamlit 앱의 requirements.txt 와 별개
+fastapi>=0.115
+uvicorn[standard]>=0.30
+itsdangerous>=2.2        # 로그인 세션 쿠키 서명
+psycopg2-binary>=2.9.9   # Supabase
+pandas>=2.2
+httpx>=0.27              # 테스트(TestClient)

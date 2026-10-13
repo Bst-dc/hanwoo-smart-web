@@ -1,0 +1,17 @@
+/* Tailwind 로 표현하기 번거로운 것만 둔다. */
+.kpi-value { font-variant-numeric: tabular-nums; }
+
+/* 아래 메뉴: 손가락으로 누르기 쉬운 높이(56px 이상)와 아이폰 아래 홈 막대 여백 */
+.tabbar { padding-bottom: env(safe-area-inset-bottom); }
+.tab-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+            min-height: 56px; padding: 6px 2px; font-size: 11px; color: #77766E; text-decoration: none; }
+.tab-item .ico { font-size: 20px; line-height: 1; }
+.tab-item[aria-current="page"] { color: #2F6B54; font-weight: 700; background: #E6F0EB; }
+
+.app-header { padding-top: env(safe-area-inset-top); }
+
+/* 폰에서 입력칸을 눌렀을 때 화면이 확대되지 않게 16px 이상으로 */
+input, select, textarea { font-size: 16px; }
+
+/* 표: 가로로 넘치면 표만 옆으로 밀고, 헤더와 값은 같은 정렬 */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
