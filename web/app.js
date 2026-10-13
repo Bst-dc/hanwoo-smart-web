@@ -37,6 +37,7 @@ function renderFarmSelect() {
 function selectFarm(id) {
   state.farmId = id ? Number(id) : null;
   store.set("farmId", state.farmId ?? "");
+  document.getElementById("flash").innerHTML = "";
   renderFarmSelect();
   renderPage();
 }
@@ -69,8 +70,10 @@ async function renderPage() {
       toast(`${state.farms.find((f) => f.id === state.farmId).name} 선택`);
     };
     const farm = state.farms.find((f) => f.id === state.farmId) || null;
+    // 성적을 저장하면 농가 목록의 두수가 바뀌므로 목록부터 다시 받는다
+    const onSaved = async () => { await loadFarms(); renderFarmSelect(); await renderPage(); };
     if (tab.id === "dashboard") await renderDashboard(el, { farms: state.farms, farmId: state.farmId, isCurrent, onPickFarm });
-    else if (tab.id === "shipment") await renderShipment(el, { farm, farms: state.farms, isCurrent, onPickFarm });
+    else if (tab.id === "shipment") await renderShipment(el, { farm, farms: state.farms, isCurrent, onPickFarm, onSaved });
     else el.innerHTML = pending(tab);
   } catch (e) {
     if (token === renderToken) el.innerHTML = `<div class="rounded-xl border border-neg/40 bg-white p-4 text-neg text-sm">⚠️ ${esc(e.message)}</div>`;

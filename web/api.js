@@ -6,10 +6,12 @@ const API_BASE = window.CONSULTING_API_BASE || "";
 export const state = { farms: [], farmId: null, onUnauthorized: () => {} };
 
 export async function api(path, options = {}) {
+  // 파일(FormData)은 브라우저가 Content-Type(경계값 포함)을 직접 붙여야 한다
+  const json = options.body instanceof FormData ? {} : { "Content-Type": "application/json" };
   const res = await fetch(API_BASE + path, {
     credentials: "include",                       // 로그인 쿠키
     ...options,
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    headers: { ...json, ...(options.headers || {}) },
   });
   if (res.status === 401 && !path.startsWith("/api/auth/")) {
     state.onUnauthorized();
@@ -36,6 +38,11 @@ export function toast(message) {
   el.classList.remove("hidden");
   clearTimeout(toast._t);
   toast._t = setTimeout(() => el.classList.add("hidden"), 3000);
+}
+
+// 화면 맨 위 알림(저장 결과 등). 다른 메뉴로 가면 지워진다.
+export function flash(html) {
+  document.getElementById("flash").innerHTML = html;
 }
 
 // 브라우저 저장소는 막혀 있을 수 있어서(사생활 보호 창 등) 모든 읽기·쓰기를 감싼다.

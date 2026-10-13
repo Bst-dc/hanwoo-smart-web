@@ -4,4 +4,6 @@ uvicorn[standard]>=0.30
 itsdangerous>=2.2        # 로그인 세션 쿠키 서명
 psycopg2-binary>=2.9.9   # Supabase
 pandas>=2.2
+openpyxl>=3.1            # 엑셀 읽기 (출하성적 업로드)
+python-multipart>=0.0.9  # 파일 업로드
 httpx>=0.27              # 테스트(TestClient)

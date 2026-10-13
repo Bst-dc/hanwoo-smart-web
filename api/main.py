@@ -16,7 +16,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from . import auth, config, db
 from .limits import BodyLimitMiddleware
 from .routers import auth as auth_router
-from .routers import dashboard, farms, shipments
+from .routers import dashboard, farms, shipment_input, shipments
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("consulting.api")
@@ -74,6 +74,7 @@ app.include_router(auth_router.router)
 app.include_router(farms.router)
 app.include_router(dashboard.router)
 app.include_router(shipments.router)
+app.include_router(shipment_input.router)
 
 # 화면 파일. API 경로를 다 등록한 뒤 마지막에 붙여야 /api/... 를 가리지 않는다.
 app.mount("/", StaticFiles(directory=config.WEB_DIR, html=True), name="web")
