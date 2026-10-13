@@ -1,7 +1,9 @@
 // 한우 스마트 컨설팅 화면 — 로그인, 농가 선택(위), 메뉴 전환(아래 탭)을 맡고 각 화면은 pages/*.js 가 그린다.
 //   #/dashboard  #/shipment  #/survey  #/report  #/data
 import { api, card, esc, state, store, toast } from "./api.js";
-import { destroyCharts, renderDashboard } from "./pages/dashboard.js";
+import { destroyCharts } from "./charts.js";
+import { renderDashboard } from "./pages/dashboard.js";
+import { renderShipment } from "./pages/shipment.js";
 
 // ---------- 메뉴 ----------
 // render 가 없는 메뉴는 아직 옮기는 중이다 (기존 Streamlit 앱에서 쓴다).
@@ -61,12 +63,15 @@ async function renderPage() {
   const el = pageEl();
   try {
     destroyCharts();                  // 다른 화면으로 가면 이전 차트를 정리한다
-    if (tab.id === "dashboard") {
-      await renderDashboard(el, { farms: state.farms, farmId: state.farmId, isCurrent: () => token === renderToken, onPickFarm: (id) => {
-        selectFarm(id);
-        toast(`${state.farms.find((f) => f.id === state.farmId).name} 선택`);
-      } });
-    } else el.innerHTML = pending(tab);
+    const isCurrent = () => token === renderToken;
+    const onPickFarm = (id) => {
+      selectFarm(id);
+      toast(`${state.farms.find((f) => f.id === state.farmId).name} 선택`);
+    };
+    const farm = state.farms.find((f) => f.id === state.farmId) || null;
+    if (tab.id === "dashboard") await renderDashboard(el, { farms: state.farms, farmId: state.farmId, isCurrent, onPickFarm });
+    else if (tab.id === "shipment") await renderShipment(el, { farm, farms: state.farms, isCurrent, onPickFarm });
+    else el.innerHTML = pending(tab);
   } catch (e) {
     if (token === renderToken) el.innerHTML = `<div class="rounded-xl border border-neg/40 bg-white p-4 text-neg text-sm">⚠️ ${esc(e.message)}</div>`;
   }

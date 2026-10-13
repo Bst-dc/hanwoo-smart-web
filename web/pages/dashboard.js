@@ -1,14 +1,9 @@
 // 종합 현황 대시보드 — KPI 카드, 누락 농가 명단, 연도별 추이 차트·집계표, 거세우 vs 암소 비교.
 // 값은 서버(/api/dashboard)가 기존 앱과 같은 공식으로 계산해 준다. 여기서는 그리기만 한다.
 import { api, card, esc, num, table } from "../api.js";
+import { barChart, C, destroyCharts, fmt1, keep, lineChart } from "../charts.js";
 
-// 기존 앱과 같은 차트 색
-const C = { farm: "#2A78D6", nat: "#A8A69D", cow: "#D95926", bull: "#77766E", grid: "#E2DFD6", label: "#77766E" };
 const GENDER_COLOR = { 거세: C.farm, 암: C.cow, 수: C.bull };
-
-const fmt1 = (v) => (v === null || v === undefined ? "-" : Number(v).toFixed(1));
-const charts = [];                                   // 화면을 다시 그릴 때 이전 차트를 정리한다
-const destroyCharts = () => { while (charts.length) charts.pop().destroy(); };
 
 function kpi(label, value, sub = "", subTone = "", span = "") {
   return `<div class="rounded-2xl bg-white border border-line p-4 ${span}">
@@ -23,80 +18,6 @@ function onePlusCard(label, o) {
   const tone = o.delta >= 0 ? "text-pos" : "text-neg";
   const sign = o.delta > 0 ? "+" : "";
   return kpi(label, `${fmt1(o.value)}%`, `전국 ${o.base_year}년 ${fmt1(o.national)}% 대비 ${sign}${fmt1(o.delta)}%p`, `${tone} font-semibold`);
-}
-
-// y 범위: 선이 납작해지지 않게 실제 값 범위에 맞춘다 (기존 앱과 같은 여유: 아래 40%, 위 32%)
-function yRange(values) {
-  const v = values.filter((x) => x !== null && x !== undefined);
-  if (!v.length) return {};
-  const lo = Math.min(...v), hi = Math.max(...v);
-  const span = (hi - lo) || Math.max(Math.abs(hi) * 0.1, 1);
-  return { min: lo - span * 0.4, max: hi + span * 0.32 };
-}
-
-// 농가 값만 점 위에 숫자를 적는다 (전국 값까지 적으면 겹쳐서 읽기 어렵다)
-const valueLabels = {
-  id: "valueLabels",
-  afterDatasetsDraw(chart) {
-    const { ctx } = chart;
-    const meta = chart.getDatasetMeta(0);
-    ctx.save();
-    ctx.font = "600 11px Pretendard, sans-serif";
-    ctx.fillStyle = C.farm;
-    ctx.textAlign = "center";
-    meta.data.forEach((pt, i) => {
-      const v = chart.data.datasets[0].data[i];
-      if (v !== null && v !== undefined) ctx.fillText(Number(v).toFixed(1), pt.x, pt.y - 10);
-    });
-    ctx.restore();
-  },
-};
-
-function noChartLib(el) {
-  el.parentElement.innerHTML = '<p class="text-sm text-muted">차트를 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침하세요.</p>';
-}
-
-function drawTrend(canvas, d, gender, metricKey, label) {
-  if (!window.Chart) return noChartLib(canvas);
-  const years = d.trend.years;
-  const s = d.trend.genders[gender].series[metricKey];
-  const labels = years.map((y) => `${String(y).slice(2)}년`);
-  const range = yRange([...s.farm, ...s.national]);
-  charts.push(new Chart(canvas, {
-    type: "line",
-    data: { labels, datasets: [
-      { label: "방문농가 평균", data: s.farm, borderColor: C.farm, backgroundColor: C.farm, borderWidth: 2.6, tension: 0.3, pointRadius: 4, pointBackgroundColor: "#fff", pointBorderWidth: 2, spanGaps: true },
-      { label: "전국 평균", data: s.national, borderColor: C.nat, backgroundColor: C.nat, borderWidth: 2.4, borderDash: [5, 4], tension: 0.3, pointRadius: 3.5, pointBackgroundColor: "#fff", pointBorderWidth: 2, spanGaps: true },
-    ] },
-    options: {
-      responsive: true, maintainAspectRatio: false, animation: false,
-      interaction: { mode: "index", intersect: false },
-      plugins: { legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8 } },
-                 tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${fmt1(c.parsed.y)}` } } },
-      scales: { y: { ...range, grid: { color: C.grid }, ticks: { color: C.label, maxTicksLimit: 5, callback: (v) => Number(v).toFixed(1) }, title: { display: true, text: label, color: C.label } },
-                x: { grid: { display: false }, ticks: { color: C.label } } },
-    },
-    plugins: [valueLabels],
-  }));
-}
-
-function drawCompare(canvas, d, metricKey, label) {
-  if (!window.Chart) return noChartLib(canvas);
-  const rows = d.compare;
-  charts.push(new Chart(canvas, {
-    type: "bar",
-    data: { labels: rows.map((r) => r.gender), datasets: [{ data: rows.map((r) => r[metricKey]), backgroundColor: rows.map((r) => GENDER_COLOR[r.gender] || C.bull), borderRadius: 7, maxBarThickness: 56 }] },
-    options: {
-      responsive: true, maintainAspectRatio: false, animation: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${label}: ${fmt1(c.parsed.y)}` } } },
-      scales: { y: { beginAtZero: true, grid: { color: C.grid }, ticks: { color: C.label, maxTicksLimit: 4 } }, x: { grid: { display: false }, ticks: { color: C.label, font: { weight: 600 } } } },
-    },
-    plugins: [{ id: "barLabels", afterDatasetsDraw(chart) {
-      const { ctx } = chart; ctx.save(); ctx.font = "600 12px Pretendard, sans-serif"; ctx.fillStyle = C.label; ctx.textAlign = "center";
-      chart.getDatasetMeta(0).data.forEach((bar, i) => { const v = chart.data.datasets[0].data[i]; if (v !== null && v !== undefined) ctx.fillText(Number(v).toFixed(1), bar.x, bar.y - 6); });
-      ctx.restore();
-    } }],
-  }));
 }
 
 // 연도별 집계표: 가로가 연도(최신이 왼쪽), 세로가 지표. 값 옆 괄호는 그 해 전국 평균.
@@ -204,15 +125,16 @@ export async function renderDashboard(el, { farms, farmId, onPickFarm, isCurrent
       b.className = `px-4 py-2 min-h-[44px] ${b.dataset.g === "암" ? "border-l border-line" : ""} ${on ? "bg-brand text-white font-semibold" : "bg-white text-muted"}`;
       b.setAttribute("aria-pressed", on);
     });
-    const old = charts.findIndex((c) => c.canvas && c.canvas.id === "trend-chart");
-    if (old >= 0) charts.splice(old, 1)[0].destroy();
-    drawTrend(el.querySelector("#trend-chart"), d, gender, trendSel.value, trendLabel(trendSel.value));
+    const s = d.trend.genders[gender].series[trendSel.value];
+    keep("dash-trend", lineChart(el.querySelector("#trend-chart"), {
+      labels: d.trend.years.map((y) => `${String(y).slice(2)}년`), farm: s.farm, national: s.national,
+      yTitle: trendLabel(trendSel.value), farmLabel: "방문농가 평균" }));
     el.querySelector("#yearly-table").innerHTML = yearlyTable(d, gender);
   };
   const redrawCompare = () => {
-    const old = charts.findIndex((c) => c.canvas && c.canvas.id === "cmp-chart");
-    if (old >= 0) charts.splice(old, 1)[0].destroy();
-    drawCompare(el.querySelector("#cmp-chart"), d, cmpSel.value, compareLabel(cmpSel.value));
+    keep("dash-compare", barChart(el.querySelector("#cmp-chart"), {
+      labels: d.compare.map((r) => r.gender), values: d.compare.map((r) => r[cmpSel.value]),
+      colors: d.compare.map((r) => GENDER_COLOR[r.gender] || C.bull), valueLabel: compareLabel(cmpSel.value) }));
   };
   el.querySelectorAll("#gender-seg button").forEach((b) => b.addEventListener("click", () => { gender = b.dataset.g; redrawTrend(); }));
   trendSel.addEventListener("change", redrawTrend);
@@ -223,4 +145,3 @@ export async function renderDashboard(el, { farms, farmId, onPickFarm, isCurrent
   el.querySelectorAll(".farm-card").forEach((b) => b.addEventListener("click", () => onPickFarm(b.dataset.farm)));
 }
 
-export { destroyCharts };
