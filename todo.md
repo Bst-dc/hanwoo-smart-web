@@ -38,7 +38,8 @@
   - 신규 농가 등록, CSV·DB 파일 받기, AI 리포트 '새 탭에서 보기'를 확인해 보세요.
 - [ ] **새 앱으로 전환할지 결정** (모든 메뉴를 옮겼습니다)
   - 시험농장처럼 `consulting.` 주소를 새 앱으로 바꾸고, 기존 앱은 `consulting-old.` 주소로 한동안 남겨 두는 방식을 권합니다.
-  - 정하시면 Claude가 서버 설정 스크립트를 만들어 드립니다.
+  - 스크립트 준비됨. 서버에서: `sudo bash /opt/hanwoo/apps/consulting/deploy/consulting-next/switch.sh`
+  - 되돌리기: 같은 명령 끝에 ` --rollback`
 
 ## 4. monday.com
 
