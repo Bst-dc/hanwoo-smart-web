@@ -25,7 +25,8 @@ for k in ("EKAPE_API_KEY", "GITHUB_TOKEN"):
 import db_schema  # noqa: E402
 from api.services import ekape, shipment_input as si  # noqa: E402
 
-ISSUE_XML = "<response><body><items><item><issueNo>{}</issueNo></item></items></body></response>"
+ISSUE_XML = ("<response><body><items><item><issueNo>{}     </issueNo><issueDate>2026-01-14</issueDate>"
+             "<abattDate>2026-01-13</abattDate></item></items></body></response>")
 GRADE_XML = """<response><body><items><item>
 <judgeSexNm>{sex}</judgeSexNm><costAmt>{cost}</costAmt><weight>458</weight><qgrade>1+</qgrade><wgrade>A</wgrade>
 <insfat>7</insfat><backfat>10</backfat><rea>99</rea><birthmonth>31</birthmonth><abattDate>2026-01-13</abattDate>
@@ -115,6 +116,29 @@ class EkapeTest(unittest.TestCase):
         self.assertIn("등급판정 기록 없음", ekape.fetch_one("002000000008", "KEY", fake_get({}))[1])
         self.assertIn("형식 오류", ekape.fetch_one("1", "KEY", fake_get({"animalNo=1": "<<not xml"}))[1])
         self.assertIn("연결 실패 (TimeoutError)", ekape.fetch_one("1", "KEY", fake_get({"animalNo=1": TimeoutError()}))[1])
+
+    def test_second_call_sends_issue_date(self):
+        """확인서 번호는 다시 쓰인다 → 발급일을 같이 보내야 이 소의 성적이 나온다 (실제 응답 모양)."""
+        urls = []
+        issue = ("<response><body><items><item><abattDate>2023-08-31</abattDate><animalNo>002158963731</animalNo>"
+                 "<issueDate>2023-09-01</issueDate><issueNo>0905-50642     </issueNo><judgeSexNm>거세</judgeSexNm></item></items></body></response>")
+        grade = GRADE_XML.format(sex="거세", cost="").replace("2026-01-13", "2023-08-31").replace("<item>", "<item><cattleNo>002158963731</cattleNo>")
+
+        def get(url):
+            urls.append(url)
+            return issue if "animalNo=" in url else grade
+        rec, why = ekape.fetch_one("002158963731", "KEY", get)
+        self.assertEqual((why, rec["slaughter_date"]), ("", "2023-08-31"))
+        self.assertIn("issueNo=0905-50642&issueDate=2023-09-01&", urls[1])
+
+    def test_rejects_grade_of_another_cow(self):
+        """번호만으로 조회돼 다른 소의 성적이 오면 저장하지 않게 실패로 돌린다."""
+        other_no = fake_get({"animalNo=002000000009": ISSUE_XML.format("A-9"),
+                             "issueNo=A-9": GRADE_XML.format(sex="암", cost="").replace("<item>", "<item><cattleNo>002999999999</cattleNo>")})
+        self.assertIn("다른 소", ekape.fetch_one("002000000009", "KEY", other_no)[1])
+        other_day = fake_get({"animalNo=002000000009": ISSUE_XML.format("A-9"),
+                              "issueNo=A-9": GRADE_XML.format(sex="암", cost="").replace("2026-01-13", "2026-09-02")})
+        self.assertIn("다른 소", ekape.fetch_one("002000000009", "KEY", other_day)[1])
 
     def test_fetch_many_keeps_input_order(self):
         resp = {"animalNo=002000000009": ISSUE_XML.format("A-9"), "issueNo=A-9": GRADE_XML.format(sex="거세", cost="1"),

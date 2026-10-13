@@ -1269,11 +1269,17 @@ def fetch_cattle_grade(animal_no):
         req1 = urllib.request.urlopen(url1, timeout=6)
         xml1 = req1.read().decode('utf-8')
         root1 = ET.fromstring(xml1)
-        issue_node = root1.find('.//issueNo')
-        if issue_node is None or not issue_node.text: return None
+        issue_item = root1.find('.//item')
+        issue_node = issue_item.find('issueNo') if issue_item is not None else None
+        if issue_node is None or not issue_node.text or not issue_node.text.strip(): return None
         issue_no = issue_node.text.strip()
+        issue_date = (issue_item.findtext('issueDate') or '').strip()
+        abatt_date1 = (issue_item.findtext('abattDate') or '').strip()
 
-        url2 = f"http://data.ekape.or.kr/openapi-data/service/user/grade/confirm/cattle?issueNo={urllib.parse.quote(issue_no)}&ServiceKey={ekape_key}"
+        # 확인서 번호는 몇 년 뒤 다른 소에게 다시 쓰인다. 발급일(issueDate)을 같이 보내야 이 소의 성적이 나온다.
+        # (번호만 보내면 가장 최근에 그 번호로 발급된 다른 소의 성적이 와서, 성별 등이 잘못 저장됐다 — 2026-10 확인)
+        url2 = (f"http://data.ekape.or.kr/openapi-data/service/user/grade/confirm/cattle?issueNo={urllib.parse.quote(issue_no)}"
+                f"&issueDate={urllib.parse.quote(issue_date)}&ServiceKey={ekape_key}")
         req2 = urllib.request.urlopen(url2, timeout=6)
         xml2 = req2.read().decode('utf-8')
         root2 = ET.fromstring(xml2)
@@ -1283,6 +1289,12 @@ def fetch_cattle_grade(animal_no):
         def get_t(tag):
             n = item.find(tag)
             return n.text if n is not None else None
+
+        # 받은 성적이 이 소의 것인지 대조: 이력번호(cattleNo)나 도축일이 다르면 다른 소이므로 버린다
+        got_no = normalize_animal_no((get_t('cattleNo') or '').strip())
+        got_abatt = (get_t('abattDate') or '').strip()
+        if (got_no and got_no != animal_no) or (abatt_date1 and got_abatt and got_abatt != abatt_date1):
+            return None
         def to_f(v):
             try: return float(v) if v else None
             except: return None

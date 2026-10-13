@@ -1,6 +1,7 @@
 """축평원(eKAPE) 도체 등급판정 조회 — 기존 앱 fetch_cattle_grade() 와 같은 두 번 호출.
 
-이력번호 → 등급판정 확인서번호(issueNo) → 그 확인서의 도체 성적(item).
+이력번호 → 등급판정 확인서번호(issueNo)·발급일 → 그 확인서의 도체 성적(item).
+기존 앱은 두 번째 조회에 발급일을 빠뜨려, 번호가 다시 쓰인 오래된 소는 다른 소의 성적을 받아 왔다 (2026-10 고침).
 기존 앱은 실패 이유를 모두 None 으로 뭉갰는데, 여기서는 어떤 번호가 왜 안 됐는지 화면에 알려 준다.
 """
 import logging
@@ -57,9 +58,29 @@ def _to_f(v):
         return None
 
 
-def parse_issue_no(xml_text: str) -> str | None:
-    node = ET.fromstring(xml_text).find(".//issueNo")
-    return node.text.strip() if node is not None and node.text and node.text.strip() else None
+def _text(node, tag) -> str:
+    n = node.find(tag)
+    return (n.text or "").strip() if n is not None else ""
+
+
+def parse_issue(xml_text: str, animal_no: str) -> dict | None:
+    """이력번호 조회 XML → 확인서 {issue_no, issue_date, abatt_date}. 없으면 None.
+
+    확인서 번호(예: 0905-50642)는 몇 년 뒤 다른 소에게 다시 쓰인다. 그래서 다음 조회에 발급일을 같이 보내야
+    이 소의 성적이 나온다 (번호만 보내면 가장 최근에 그 번호로 발급된 다른 소가 나온다 — 2026-10 확인).
+    """
+    items = ET.fromstring(xml_text).findall(".//item")
+    mine = [i for i in items if normalize_animal_no(_text(i, "animalNo")) == animal_no] or items
+    for it in mine:
+        if _text(it, "issueNo"):
+            return {"issue_no": _text(it, "issueNo"), "issue_date": _text(it, "issueDate"), "abatt_date": _text(it, "abattDate")}
+    return None
+
+
+def cattle_no(xml_text: str) -> str:
+    """확인서 성적 XML 의 이력번호(cattleNo). 없으면 빈 문자열."""
+    item = ET.fromstring(xml_text).find(".//item")
+    return normalize_animal_no(_text(item, "cattleNo")) if item is not None else ""
 
 
 def parse_grade(xml_text: str, animal_no: str) -> dict | None:
@@ -100,12 +121,18 @@ def fetch_one(animal_no: str, key: str, get=_http_get) -> tuple[dict | None, str
     """반환: (성적 또는 None, 실패 이유). get 은 시험에서 가짜로 바꿔 끼운다."""
     q = urllib.parse.quote
     try:
-        issue_no = parse_issue_no(get(f"{BASE}/issueNo?animalNo={q(animal_no)}&ServiceKey={key}"))
-        if not issue_no:
+        issue = parse_issue(get(f"{BASE}/issueNo?animalNo={q(animal_no)}&ServiceKey={key}"), animal_no)
+        if not issue:
             return None, "등급판정 기록 없음 (번호 확인 또는 아직 판정 전)"
-        rec = parse_grade(get(f"{BASE}/cattle?issueNo={q(issue_no)}&ServiceKey={key}"), animal_no)
+        xml = get(f"{BASE}/cattle?issueNo={q(issue['issue_no'])}&issueDate={q(issue['issue_date'])}&ServiceKey={key}")
+        rec = parse_grade(xml, animal_no)
         if rec is None:
             return None, "확인서에 성적이 없음"
+        # 받은 성적이 정말 이 소의 것인지 대조한다 (다른 소 성적이 저장되는 것을 막는다)
+        got = cattle_no(xml)
+        if (got and got != animal_no) or (issue["abatt_date"] and rec["slaughter_date"] and issue["abatt_date"] != rec["slaughter_date"]):
+            log.warning("축평원 성적이 다른 소의 것: %s… (확인서 %s)", animal_no[:5], issue["issue_no"])
+            return None, "축평원이 다른 소의 성적을 돌려줌 (저장하지 않음)"
         return rec, ""
     except ET.ParseError:
         log.warning("축평원 응답을 읽지 못함: %s…", animal_no[:5])
