@@ -6,4 +6,6 @@ psycopg2-binary>=2.9.9   # Supabase
 pandas>=2.2
 openpyxl>=3.1            # 엑셀 읽기 (출하성적 업로드)
 python-multipart>=0.0.9  # 파일 업로드
+anthropic>=0.62,<2.0     # AI 리포트 (Claude)
+markdown>=3.5            # 리포트 HTML 변환
 httpx>=0.27              # 테스트(TestClient)
