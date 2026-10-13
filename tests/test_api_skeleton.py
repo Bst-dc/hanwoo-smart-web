@@ -22,7 +22,11 @@ os.environ["APP_PASSWORD"] = "test-pass"
 from fastapi.testclient import TestClient  # noqa: E402
 
 import db_schema  # noqa: E402
+from api import config  # noqa: E402
 from api.main import app  # noqa: E402
+
+# 다른 시험 파일이 먼저 api 를 불러왔어도 이 시험의 임시 DB 를 쓰게 경로를 직접 지정한다
+config.DB_PATH = Path(os.environ["CONSULTING_DB_PATH"])
 
 
 def _seed():

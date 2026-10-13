@@ -1,0 +1,226 @@
+// 종합 현황 대시보드 — KPI 카드, 누락 농가 명단, 연도별 추이 차트·집계표, 거세우 vs 암소 비교.
+// 값은 서버(/api/dashboard)가 기존 앱과 같은 공식으로 계산해 준다. 여기서는 그리기만 한다.
+import { api, card, esc, num, table } from "../api.js";
+
+// 기존 앱과 같은 차트 색
+const C = { farm: "#2A78D6", nat: "#A8A69D", cow: "#D95926", bull: "#77766E", grid: "#E2DFD6", label: "#77766E" };
+const GENDER_COLOR = { 거세: C.farm, 암: C.cow, 수: C.bull };
+
+const fmt1 = (v) => (v === null || v === undefined ? "-" : Number(v).toFixed(1));
+const charts = [];                                   // 화면을 다시 그릴 때 이전 차트를 정리한다
+const destroyCharts = () => { while (charts.length) charts.pop().destroy(); };
+
+function kpi(label, value, sub = "", subTone = "", span = "") {
+  return `<div class="rounded-2xl bg-white border border-line p-4 ${span}">
+    <div class="text-sm text-muted">${esc(label)}</div>
+    <div class="kpi-value text-2xl font-bold mt-1">${esc(value)}</div>
+    ${sub ? `<div class="text-xs mt-1 ${subTone || "text-muted"}">${sub}</div>` : ""}</div>`;
+}
+
+// 1+이상 출현율 카드: 전국(작년) 대비 격차를 색으로 보여 준다 (+는 초록, -는 빨강)
+function onePlusCard(label, o) {
+  if (o.national === null) return kpi(label, `${fmt1(o.value)}%`);
+  const tone = o.delta >= 0 ? "text-pos" : "text-neg";
+  const sign = o.delta > 0 ? "+" : "";
+  return kpi(label, `${fmt1(o.value)}%`, `전국 ${o.base_year}년 ${fmt1(o.national)}% 대비 ${sign}${fmt1(o.delta)}%p`, `${tone} font-semibold`);
+}
+
+// y 범위: 선이 납작해지지 않게 실제 값 범위에 맞춘다 (기존 앱과 같은 여유: 아래 40%, 위 32%)
+function yRange(values) {
+  const v = values.filter((x) => x !== null && x !== undefined);
+  if (!v.length) return {};
+  const lo = Math.min(...v), hi = Math.max(...v);
+  const span = (hi - lo) || Math.max(Math.abs(hi) * 0.1, 1);
+  return { min: lo - span * 0.4, max: hi + span * 0.32 };
+}
+
+// 농가 값만 점 위에 숫자를 적는다 (전국 값까지 적으면 겹쳐서 읽기 어렵다)
+const valueLabels = {
+  id: "valueLabels",
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    const meta = chart.getDatasetMeta(0);
+    ctx.save();
+    ctx.font = "600 11px Pretendard, sans-serif";
+    ctx.fillStyle = C.farm;
+    ctx.textAlign = "center";
+    meta.data.forEach((pt, i) => {
+      const v = chart.data.datasets[0].data[i];
+      if (v !== null && v !== undefined) ctx.fillText(Number(v).toFixed(1), pt.x, pt.y - 10);
+    });
+    ctx.restore();
+  },
+};
+
+function noChartLib(el) {
+  el.parentElement.innerHTML = '<p class="text-sm text-muted">차트를 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침하세요.</p>';
+}
+
+function drawTrend(canvas, d, gender, metricKey, label) {
+  if (!window.Chart) return noChartLib(canvas);
+  const years = d.trend.years;
+  const s = d.trend.genders[gender].series[metricKey];
+  const labels = years.map((y) => `${String(y).slice(2)}년`);
+  const range = yRange([...s.farm, ...s.national]);
+  charts.push(new Chart(canvas, {
+    type: "line",
+    data: { labels, datasets: [
+      { label: "방문농가 평균", data: s.farm, borderColor: C.farm, backgroundColor: C.farm, borderWidth: 2.6, tension: 0.3, pointRadius: 4, pointBackgroundColor: "#fff", pointBorderWidth: 2, spanGaps: true },
+      { label: "전국 평균", data: s.national, borderColor: C.nat, backgroundColor: C.nat, borderWidth: 2.4, borderDash: [5, 4], tension: 0.3, pointRadius: 3.5, pointBackgroundColor: "#fff", pointBorderWidth: 2, spanGaps: true },
+    ] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8 } },
+                 tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${fmt1(c.parsed.y)}` } } },
+      scales: { y: { ...range, grid: { color: C.grid }, ticks: { color: C.label, maxTicksLimit: 5, callback: (v) => Number(v).toFixed(1) }, title: { display: true, text: label, color: C.label } },
+                x: { grid: { display: false }, ticks: { color: C.label } } },
+    },
+    plugins: [valueLabels],
+  }));
+}
+
+function drawCompare(canvas, d, metricKey, label) {
+  if (!window.Chart) return noChartLib(canvas);
+  const rows = d.compare;
+  charts.push(new Chart(canvas, {
+    type: "bar",
+    data: { labels: rows.map((r) => r.gender), datasets: [{ data: rows.map((r) => r[metricKey]), backgroundColor: rows.map((r) => GENDER_COLOR[r.gender] || C.bull), borderRadius: 7, maxBarThickness: 56 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${label}: ${fmt1(c.parsed.y)}` } } },
+      scales: { y: { beginAtZero: true, grid: { color: C.grid }, ticks: { color: C.label, maxTicksLimit: 4 } }, x: { grid: { display: false }, ticks: { color: C.label, font: { weight: 600 } } } },
+    },
+    plugins: [{ id: "barLabels", afterDatasetsDraw(chart) {
+      const { ctx } = chart; ctx.save(); ctx.font = "600 12px Pretendard, sans-serif"; ctx.fillStyle = C.label; ctx.textAlign = "center";
+      chart.getDatasetMeta(0).data.forEach((bar, i) => { const v = chart.data.datasets[0].data[i]; if (v !== null && v !== undefined) ctx.fillText(Number(v).toFixed(1), bar.x, bar.y - 6); });
+      ctx.restore();
+    } }],
+  }));
+}
+
+// 연도별 집계표: 가로가 연도(최신이 왼쪽), 세로가 지표. 값 옆 괄호는 그 해 전국 평균.
+function yearlyTable(d, gender) {
+  const g = d.trend.genders[gender];
+  if (!g.rows.length) return '<p class="text-sm text-muted">등록된 출하 성적이 없습니다. 농가 성적을 먼저 입력해주세요.</p>';
+  const yearIdx = Object.fromEntries(d.trend.years.map((y, i) => [y, i]));
+  const rows = [...g.rows].sort((a, b) => b.year - a.year);
+  const columns = ["지표", ...rows.map((r) => `${String(r.year).slice(2)}년`)];
+  const cell = (r, key) => {
+    const v = r[key];
+    if (v === null || v === undefined) return "-";
+    const nat = g.series[key].national[yearIdx[r.year]];
+    return nat === null || nat === undefined ? fmt1(v) : `${fmt1(v)} (${fmt1(nat)})`;
+  };
+  const body = [
+    ["농가수", ...rows.map((r) => num(r.farms))],
+    ["출하두수", ...rows.map((r) => num(r.heads))],
+    ...d.trend.metrics.map((m) => [m.label, ...rows.map((r) => cell(r, m.key))]),
+  ];
+  return `<p class="text-xs text-muted mb-2">※ 괄호 ( ) 안의 수치는 해당 연도 전국 평균입니다.</p>` +
+    table({ columns, rows: body }, { align: Object.fromEntries(columns.map((c, i) => [c, i === 0 ? "left" : "center"])) });
+}
+
+const COMPARE_METRICS = [["carcass_weight", "도체중 (kg)"], ["bms", "BMS"], ["ribeye", "단면적 (㎠)"], ["backfat", "등지방 (mm)"], ["q1plus", "1+ 이상 출현율 (%)"], ["month_age", "출하월령 (개월)"]];
+
+function compareTable(d) {
+  const columns = ["성별", "출하두수", "도체중 (kg)", "BMS", "단면적 (㎠)", "등지방 (mm)", "1+ 이상 (%)", "월령"];
+  const rows = d.compare.map((r) => [r.gender, num(r.heads), fmt1(r.carcass_weight), fmt1(r.bms), fmt1(r.ribeye), fmt1(r.backfat), fmt1(r.q1plus), fmt1(r.month_age)]);
+  return table({ columns, rows }, { align: Object.fromEntries(columns.map((c, i) => [c, i === 0 ? "left" : "center"])) });
+}
+
+export async function renderDashboard(el, { farms, farmId, onPickFarm, isCurrent = () => true }) {
+  destroyCharts();
+  el.innerHTML = '<p class="text-sm text-muted">불러오는 중…</p>';
+  const d = await api("/api/dashboard");
+  if (!isCurrent()) return;           // 기다리는 사이 다른 화면으로 옮겼으면 그리지 않는다
+  const k = d.kpi;
+  const src = d.national_source;
+  const srcNote = src.kosis === "live" ? "전국 평균: 통계청(KOSIS) 최신값 반영"
+    : src.kosis === "partial" ? "전국 평균: KOSIS 일부만 반영 (나머지는 기본값)"
+    : "전국 평균: 기본값 사용 중 (KOSIS 최신값을 받지 못했습니다)";
+  const srcTone = src.kosis === "live" ? "text-muted" : "text-neg";
+
+  const list = (names) => (names.length ? names.map(esc).join(", ") : "해당 농가 없음");
+  el.innerHTML = `
+    <h2 class="text-xl font-bold mb-3">종합 현황 대시보드</h2>
+    <div class="grid grid-cols-2 gap-3">
+      ${kpi("총 관리 농가 수", `${num(k.farms)} 농가`)}
+      ${kpi("누적 현장 방문 횟수", `${num(k.visits)} 회`)}
+      ${kpi("누적 분석 출하 두수", `${num(k.shipments)} 두`, "", "", "col-span-2")}
+      ${onePlusCard("거세우 1+이상 출현율", k.steer_1plus)}
+      ${onePlusCard("암소 1+이상 출현율", k.cow_1plus)}
+      ${kpi("출하성적만 있는 농가", `${num(k.missing_survey.length)} 농가`, "조사표 미작성")}
+      ${kpi("조사표만 있는 농가", `${num(k.missing_shipment.length)} 농가`, "출하성적 미수집")}
+    </div>
+    <details class="mt-3 rounded-2xl bg-white border border-line p-4">
+      <summary class="cursor-pointer font-semibold text-sm">📌 누락 데이터 보유 농가 명단</summary>
+      <div class="mt-3 space-y-3 text-sm">
+        <div><div class="font-semibold">출하성적만 있고 조사표 없는 농가</div><div class="text-muted mt-1">${list(k.missing_survey)}</div></div>
+        <div><div class="font-semibold">조사표만 있고 출하성적 없는 농가</div><div class="text-muted mt-1">${list(k.missing_shipment)}</div></div>
+      </div>
+    </details>
+    <p class="text-xs ${srcTone} mt-2">${esc(srcNote)}</p>
+
+    <div class="flex items-center justify-between gap-3 mt-6 mb-2">
+      <h3 class="text-base font-bold">연도별 성적 추이</h3>
+      <div id="gender-seg" class="inline-flex rounded-xl border border-line overflow-hidden text-sm" role="group" aria-label="성별">
+        <button data-g="거세" class="px-4 py-2 min-h-[44px]">거세우</button>
+        <button data-g="암" class="px-4 py-2 min-h-[44px] border-l border-line">암소</button>
+      </div>
+    </div>
+    ${card(`
+      <label class="block text-sm text-muted mb-1" for="trend-metric">비교 지표</label>
+      <select id="trend-metric" class="w-full rounded-xl border border-line bg-white px-3 py-2 mb-3">
+        ${d.trend.metrics.map((m) => `<option value="${m.key}">${esc(m.label)}</option>`).join("")}</select>
+      <div class="relative" style="height:260px"><canvas id="trend-chart" aria-label="연도별 성적 추이 차트" role="img"></canvas></div>`)}
+    <h3 class="text-base font-bold mt-5 mb-2">연도별 전체 집계표</h3>
+    <div id="yearly-table"></div>
+
+    <h3 class="text-base font-bold mt-6 mb-2">거세우 vs 암소 전체 누적 평균 비교</h3>
+    <div id="compare-table" class="mb-3"></div>
+    ${card(`
+      <label class="block text-sm text-muted mb-1" for="cmp-metric">비교 지표</label>
+      <select id="cmp-metric" class="w-full rounded-xl border border-line bg-white px-3 py-2 mb-3">
+        ${COMPARE_METRICS.map(([key, label]) => `<option value="${key}">${esc(label)}</option>`).join("")}</select>
+      <div class="relative" style="height:220px"><canvas id="cmp-chart" aria-label="거세우와 암소 비교 차트" role="img"></canvas></div>`)}
+
+    <h3 class="text-base font-bold mt-6 mb-2">농가 목록</h3>
+    <div class="space-y-2">${farms.map((f) => `
+      <button data-farm="${f.id}" class="farm-card w-full text-left rounded-2xl bg-white border ${f.id === farmId ? "border-brand" : "border-line"} p-4 active:bg-panel">
+        <div class="flex items-center justify-between gap-2"><span class="font-semibold truncate">${esc(f.name)}</span><span class="text-xs text-muted shrink-0">${esc(f.region)}</span></div>
+        <div class="text-sm text-muted mt-1">방문 ${num(f.visits)}회 · 출하성적 ${num(f.shipments)}두</div></button>`).join("")}</div>`;
+
+  // ---- 동작 연결 ----
+  let gender = "거세";
+  const trendSel = el.querySelector("#trend-metric");
+  const cmpSel = el.querySelector("#cmp-metric");
+  const trendLabel = (key) => d.trend.metrics.find((m) => m.key === key).label;
+  const compareLabel = (key) => COMPARE_METRICS.find(([k]) => k === key)[1];
+
+  const redrawTrend = () => {
+    el.querySelectorAll("#gender-seg button").forEach((b) => {
+      const on = b.dataset.g === gender;
+      b.className = `px-4 py-2 min-h-[44px] ${b.dataset.g === "암" ? "border-l border-line" : ""} ${on ? "bg-brand text-white font-semibold" : "bg-white text-muted"}`;
+      b.setAttribute("aria-pressed", on);
+    });
+    const old = charts.findIndex((c) => c.canvas && c.canvas.id === "trend-chart");
+    if (old >= 0) charts.splice(old, 1)[0].destroy();
+    drawTrend(el.querySelector("#trend-chart"), d, gender, trendSel.value, trendLabel(trendSel.value));
+    el.querySelector("#yearly-table").innerHTML = yearlyTable(d, gender);
+  };
+  const redrawCompare = () => {
+    const old = charts.findIndex((c) => c.canvas && c.canvas.id === "cmp-chart");
+    if (old >= 0) charts.splice(old, 1)[0].destroy();
+    drawCompare(el.querySelector("#cmp-chart"), d, cmpSel.value, compareLabel(cmpSel.value));
+  };
+  el.querySelectorAll("#gender-seg button").forEach((b) => b.addEventListener("click", () => { gender = b.dataset.g; redrawTrend(); }));
+  trendSel.addEventListener("change", redrawTrend);
+  cmpSel.addEventListener("change", redrawCompare);
+  el.querySelector("#compare-table").innerHTML = compareTable(d);
+  redrawTrend();
+  redrawCompare();
+  el.querySelectorAll(".farm-card").forEach((b) => b.addEventListener("click", () => onPickFarm(b.dataset.farm)));
+}
+
+export { destroyCharts };

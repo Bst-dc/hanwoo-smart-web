@@ -1,6 +1,7 @@
 // 한우 스마트 컨설팅 화면 — 로그인, 농가 선택(위), 메뉴 전환(아래 탭)을 맡고 각 화면은 pages/*.js 가 그린다.
 //   #/dashboard  #/shipment  #/survey  #/report  #/data
-import { api, card, esc, num, state, store, toast } from "./api.js";
+import { api, card, esc, state, store, toast } from "./api.js";
+import { destroyCharts, renderDashboard } from "./pages/dashboard.js";
 
 // ---------- 메뉴 ----------
 // render 가 없는 메뉴는 아직 옮기는 중이다 (기존 Streamlit 앱에서 쓴다).
@@ -52,41 +53,6 @@ function pending(tab) {
     <p class="text-muted text-sm">이 화면은 아직 옮기는 중입니다. 기존 앱(consulting 주소)에서 사용하세요.</p>`);
 }
 
-function kpi(label, value, sub = "") {
-  return `<div class="rounded-2xl bg-white border border-line p-4">
-    <div class="text-sm text-muted">${esc(label)}</div>
-    <div class="kpi-value text-2xl font-bold mt-1">${esc(value)}</div>
-    ${sub ? `<div class="text-xs text-muted mt-1">${esc(sub)}</div>` : ""}</div>`;
-}
-
-// 0단계 대시보드: 농가 수·방문 횟수·출하성적 두수 (기존 앱 대시보드 숫자와 맞춰 보는 용도) + 농가 카드
-function renderDashboard(el) {
-  const farms = state.farms;
-  const visits = farms.reduce((s, f) => s + f.visits, 0);
-  const ships = farms.reduce((s, f) => s + f.shipments, 0);
-  const noShip = farms.filter((f) => f.shipments === 0).length;
-  el.innerHTML = `<h2 class="text-xl font-bold mb-3">종합 현황 대시보드</h2>
-    <div class="grid grid-cols-2 gap-3">
-      ${kpi("총 관리 농가 수", `${num(farms.length)} 농가`)}
-      ${kpi("누적 현장 방문 횟수", `${num(visits)} 회`)}
-      ${kpi("누적 분석 출하 두수", `${num(ships)} 두`)}
-      ${kpi("출하성적 없는 농가", `${num(noShip)} 농가`)}
-    </div>
-    <h3 class="text-base font-bold mt-6 mb-2">농가 목록</h3>
-    <div class="space-y-2">${farms.map((f) => `
-      <button data-farm="${f.id}" class="farm-card w-full text-left rounded-2xl bg-white border ${f.id === state.farmId ? "border-brand" : "border-line"} p-4 active:bg-panel">
-        <div class="flex items-center justify-between gap-2">
-          <span class="font-semibold truncate">${esc(f.name)}</span>
-          <span class="text-xs text-muted shrink-0">${esc(f.region)}</span>
-        </div>
-        <div class="text-sm text-muted mt-1">방문 ${num(f.visits)}회 · 출하성적 ${num(f.shipments)}두</div>
-      </button>`).join("")}</div>`;
-  el.querySelectorAll(".farm-card").forEach((b) => b.addEventListener("click", () => {
-    selectFarm(b.dataset.farm);
-    toast(`${state.farms.find((f) => f.id === state.farmId).name} 선택`);
-  }));
-}
-
 let renderToken = 0;
 async function renderPage() {
   const token = ++renderToken;       // 느린 화면이 늦게 도착해 새 화면을 덮어쓰지 않게 한다
@@ -94,8 +60,13 @@ async function renderPage() {
   const tab = currentTab();
   const el = pageEl();
   try {
-    if (tab.id === "dashboard") renderDashboard(el);
-    else el.innerHTML = pending(tab);
+    destroyCharts();                  // 다른 화면으로 가면 이전 차트를 정리한다
+    if (tab.id === "dashboard") {
+      await renderDashboard(el, { farms: state.farms, farmId: state.farmId, isCurrent: () => token === renderToken, onPickFarm: (id) => {
+        selectFarm(id);
+        toast(`${state.farms.find((f) => f.id === state.farmId).name} 선택`);
+      } });
+    } else el.innerHTML = pending(tab);
   } catch (e) {
     if (token === renderToken) el.innerHTML = `<div class="rounded-xl border border-neg/40 bg-white p-4 text-neg text-sm">⚠️ ${esc(e.message)}</div>`;
   }
