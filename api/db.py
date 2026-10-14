@@ -19,11 +19,18 @@ def using_supabase() -> bool:
 
 def connect():
     if using_supabase():
+        # member_type 칸이 이미 있으면 DDL 을 실행하지 않고 건너뛴다 (프로세스당 한 번 점검)
+        db_adapter.ensure_schema(db_schema.SCHEMA, db_schema.PG_DDL, extra_sql=db_schema.EXTRA_SQL,
+                                 required_tables=db_schema.TABLES, required_columns=db_schema.REQUIRED_COLUMNS)
         return db_adapter.connect(db_schema.SCHEMA)
     config.DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(config.DB_PATH, timeout=30, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(farms)")}
+    if cols and "member_type" not in cols:                 # 기존 농가는 모두 조합원
+        conn.execute("ALTER TABLE farms ADD COLUMN member_type TEXT NOT NULL DEFAULT '조합원'")
+        conn.commit()
     return conn
 
 

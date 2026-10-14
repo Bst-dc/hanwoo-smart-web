@@ -6,7 +6,8 @@ const btn = "rounded-xl px-4 py-3 min-h-[48px] text-sm font-semibold disabled:op
 const inputCls = "w-full rounded-xl border border-line bg-white px-3 py-2";
 const errBox = (m) => `<div class="rounded-xl border border-neg/40 bg-white p-3 mb-3 text-sm text-neg">⚠️ ${esc(m)}</div>`;
 const BREEDING = ["비육우", "일관사육", "번식우"];
-const form = { code: "", name: "", owner: "", region: "", breeding_type: "비육우", total_heads: 100, open: false };
+const MEMBER = ["조합원", "비조합원"];
+const form = { code: "", name: "", owner: "", region: "", breeding_type: "비육우", total_heads: 100, member_type: "조합원", open: false };
 
 function stat(label, value, unit) {
   return `<div class="rounded-2xl bg-white border border-line p-4"><div class="text-sm text-muted">${esc(label)}</div>
@@ -19,8 +20,10 @@ function newFarmForm() {
     <details id="nf" class="rounded-2xl bg-white border border-line p-4" ${form.open ? "open" : ""}>
       <summary class="cursor-pointer font-semibold">➕ 신규 농가 등록</summary>
       <form id="nf-form" class="mt-3 grid gap-3 sm:grid-cols-2" novalidate>
+        <div class="sm:col-span-2"><label class="block text-sm text-muted mb-1" for="nf-member">구분</label>
+          <select id="nf-member" data-k="member_type" class="${inputCls}">${MEMBER.map((m) => `<option ${form.member_type === m ? "selected" : ""}>${m}</option>`).join("")}</select></div>
         <div><label class="block text-sm text-muted mb-1" for="nf-name">농가명 *</label><input id="nf-name" data-k="name" class="${inputCls}" value="${esc(form.name)}" placeholder="예: 한우사랑농장" maxlength="60" required></div>
-        <div><label class="block text-sm text-muted mb-1" for="nf-code">조합원 번호</label><input id="nf-code" data-k="code" class="${inputCls}" value="${esc(form.code)}" placeholder="비우면 자동으로 붙습니다" maxlength="30"></div>
+        <div><label class="block text-sm text-muted mb-1" for="nf-code">${form.member_type === "비조합원" ? "관리 번호 (선택)" : "조합원 번호"}</label><input id="nf-code" data-k="code" class="${inputCls}" value="${esc(form.code)}" placeholder="비우면 자동으로 붙습니다" maxlength="30"></div>
         <div><label class="block text-sm text-muted mb-1" for="nf-owner">대표자명</label><input id="nf-owner" data-k="owner" class="${inputCls}" value="${esc(form.owner)}" maxlength="30"></div>
         <div><label class="block text-sm text-muted mb-1" for="nf-region">지역</label><input id="nf-region" data-k="region" class="${inputCls}" value="${esc(form.region)}" placeholder="예: 경북 영천" maxlength="30"></div>
         <div><span class="block text-sm text-muted mb-1">사육형태</span><div class="flex flex-wrap gap-2">${seg}</div></div>
@@ -54,6 +57,7 @@ function bindNewFarm(el, ctx) {
   };
   f.querySelectorAll("[data-k]").forEach((i) => i.addEventListener("input", () => {
     form[i.dataset.k] = i.value;
+    if (i.dataset.k === "member_type") el.querySelector('label[for="nf-code"]').textContent = i.value === "비조합원" ? "관리 번호 (선택)" : "조합원 번호";
     if (i.dataset.k === "name" || i.dataset.k === "code") checkDup();
   }));
   f.querySelectorAll(".bt").forEach((b) => b.addEventListener("click", () => {
@@ -74,7 +78,7 @@ function bindNewFarm(el, ctx) {
     save.disabled = true; save.textContent = "저장 중…";
     try {
       const r = await api("/api/farms", { method: "POST", body: JSON.stringify({ ...form, total_heads: Number(form.total_heads) || 0, open: undefined, confirm_duplicate: !!confirm?.checked }) });
-      Object.assign(form, { code: "", name: "", owner: "", region: "", breeding_type: "비육우", total_heads: 100, open: false });
+      Object.assign(form, { code: "", name: "", owner: "", region: "", breeding_type: "비육우", total_heads: 100, member_type: "조합원", open: false });
       const b = r.backup;
       await ctx.onSaved();
       ctx.onPickFarm(r.id);                                   // 농가를 바꾸면 알림이 지워지므로 알림은 그 뒤에

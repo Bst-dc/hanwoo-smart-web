@@ -50,10 +50,14 @@ function compareTable(d) {
   return table({ columns, rows }, { align: Object.fromEntries(columns.map((c, i) => [c, i === 0 ? "left" : "center"])) });
 }
 
-export async function renderDashboard(el, { farms, farmId, onPickFarm, isCurrent = () => true }) {
+const MEMBERS = ["전체", "조합원", "비조합원"];
+let member = "전체";                                  // 선택한 농가 구분은 화면을 옮겨도 유지한다
+
+export async function renderDashboard(el, ctx) {
+  const { farms, farmId, onPickFarm, isCurrent = () => true } = ctx;
   destroyCharts();
   el.innerHTML = '<p class="text-sm text-muted">불러오는 중…</p>';
-  const d = await api("/api/dashboard");
+  const d = await api(`/api/dashboard?member=${encodeURIComponent(member)}`);
   if (!isCurrent()) return;           // 기다리는 사이 다른 화면으로 옮겼으면 그리지 않는다
   const k = d.kpi;
   const src = d.national_source;
@@ -65,6 +69,9 @@ export async function renderDashboard(el, { farms, farmId, onPickFarm, isCurrent
   const list = (names) => (names.length ? names.map(esc).join(", ") : "해당 농가 없음");
   el.innerHTML = `
     <h2 class="text-xl font-bold mb-3">종합 현황 대시보드</h2>
+    <div id="member-seg" class="inline-flex rounded-xl border border-line overflow-hidden text-sm mb-3" role="group" aria-label="농가 구분">
+      ${MEMBERS.map((m, i) => `<button data-m="${m}" aria-pressed="${m === member}" class="px-4 py-2 min-h-[44px] ${i ? "border-l border-line" : ""} ${m === member ? "bg-brand text-white font-semibold" : "bg-white text-muted"}">${m}</button>`).join("")}
+    </div>
     <div class="grid grid-cols-2 gap-3">
       ${kpi("총 관리 농가 수", `${num(k.farms)} 농가`)}
       ${kpi("누적 현장 방문 횟수", `${num(k.visits)} 회`)}
@@ -107,9 +114,9 @@ export async function renderDashboard(el, { farms, farmId, onPickFarm, isCurrent
       <div class="relative" style="height:220px"><canvas id="cmp-chart" aria-label="거세우와 암소 비교 차트" role="img"></canvas></div>`)}
 
     <h3 class="text-base font-bold mt-6 mb-2">농가 목록</h3>
-    <div class="space-y-2">${farms.map((f) => `
+    <div class="space-y-2">${farms.filter((f) => member === "전체" || f.member_type === member).map((f) => `
       <button data-farm="${f.id}" class="farm-card w-full text-left rounded-2xl bg-white border ${f.id === farmId ? "border-brand" : "border-line"} p-4 active:bg-panel">
-        <div class="flex items-center justify-between gap-2"><span class="font-semibold truncate">${esc(f.name)}</span><span class="text-xs text-muted shrink-0">${esc(f.region)}</span></div>
+        <div class="flex items-center justify-between gap-2"><span class="font-semibold truncate">${esc(f.name)}${f.member_type === "비조합원" ? ' <span class="text-xs font-normal text-muted border border-line rounded px-1">비조합원</span>' : ""}</span><span class="text-xs text-muted shrink-0">${esc(f.region)}</span></div>
         <div class="text-sm text-muted mt-1">방문 ${num(f.visits)}회 · 출하성적 ${num(f.shipments)}두</div></button>`).join("")}</div>`;
 
   // ---- 동작 연결 ----
@@ -142,6 +149,10 @@ export async function renderDashboard(el, { farms, farmId, onPickFarm, isCurrent
   el.querySelector("#compare-table").innerHTML = compareTable(d);
   redrawTrend();
   redrawCompare();
+  el.querySelectorAll("#member-seg button").forEach((b) => b.addEventListener("click", () => {
+    member = b.dataset.m;
+    renderDashboard(el, ctx).catch((e) => { el.innerHTML = `<p class="text-sm text-neg">⚠️ ${esc(e.message)}</p>`; });
+  }));
   el.querySelectorAll(".farm-card").forEach((b) => b.addEventListener("click", () => onPickFarm(b.dataset.farm)));
 }
 

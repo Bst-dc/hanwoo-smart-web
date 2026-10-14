@@ -108,11 +108,13 @@ def create_farm(conn, d: dict, now: datetime | None = None) -> int:
     name = d["name"].strip()
     if not name:
         raise FarmError("농가명을 넣어주세요.")
-    code = d.get("code", "").strip() or f"F{int((now or datetime.now()).timestamp()) % 10000}"
+    member_type = d.get("member_type", "조합원")
+    # 번호를 비우면 자동 번호: 조합원 F+숫자, 비조합원 N+숫자 (비조합원은 조합원번호가 없는 게 정상)
+    code = d.get("code", "").strip() or f"{'N' if member_type == '비조합원' else 'F'}{int((now or datetime.now()).timestamp()) % 10000}"
     try:
-        new_id = conn.execute("""INSERT INTO farms (farm_code, farm_name, owner_name, region, breeding_type, total_heads)
-                                 VALUES (?, ?, ?, ?, ?, ?) RETURNING id""",
-                              (code, name, d.get("owner", "").strip(), d.get("region", "").strip(), d["breeding_type"], int(d["total_heads"]))).fetchone()[0]
+        new_id = conn.execute("""INSERT INTO farms (farm_code, farm_name, owner_name, region, breeding_type, total_heads, member_type)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id""",
+                              (code, name, d.get("owner", "").strip(), d.get("region", "").strip(), d["breeding_type"], int(d["total_heads"]), member_type)).fetchone()[0]
         conn.commit()
     except Exception as e:
         conn.rollback()

@@ -77,6 +77,16 @@ MISSING_SHIPMENT_SQL = """
 """
 
 
+MEMBERS = ("전체", "조합원", "비조합원")
+
+
+def _farm_in(member: str, col: str = "farm_id") -> str:
+    """조합원/비조합원만 보는 조건. '전체'면 빈 문자열 (기존 SQL 그대로). member 는 MEMBERS 로 검사한 값만 붙인다."""
+    if member not in MEMBERS:
+        raise ValueError(f"알 수 없는 농가 구분: {member}")
+    return "" if member == "전체" else f" AND {col} IN (SELECT id FROM farms WHERE member_type = '{member}')"
+
+
 def _num(v):
     """DB 숫자(Decimal·정수·실수)를 JSON 으로 보낼 수 있게 float 로. 없으면 None."""
     return None if v is None else float(v)
@@ -92,21 +102,21 @@ def _nat_series(nat_g: dict, key: str, years: list[int]):
     return [nat_g.get(name, {}).get(y) for y in years]
 
 
-def build(conn, now: datetime | None = None) -> dict:
+def build(conn, now: datetime | None = None, member: str = "전체") -> dict:
     now = now or datetime.now()
     nat, source = national_stats.get()
     one = lambda sql, *p: conn.execute(sql, p).fetchone()[0]
 
     kpi = {
-        "farms": one("SELECT COUNT(*) FROM farms"),
-        "visits": one("SELECT COUNT(*) FROM visits"),
-        "shipments": one("SELECT COUNT(*) FROM shipment_records"),
-        "missing_survey": [r[0] for r in conn.execute(MISSING_SURVEY_SQL).fetchall()],
-        "missing_shipment": [r[0] for r in conn.execute(MISSING_SHIPMENT_SQL).fetchall()],
+        "farms": one(f"SELECT COUNT(*) FROM farms WHERE 1=1{_farm_in(member, 'id')}"),
+        "visits": one(f"SELECT COUNT(*) FROM visits WHERE 1=1{_farm_in(member)}"),
+        "shipments": one(f"SELECT COUNT(*) FROM shipment_records WHERE 1=1{_farm_in(member)}"),
+        "missing_survey": [r[0] for r in conn.execute(MISSING_SURVEY_SQL + _farm_in(member, "f.id")).fetchall()],
+        "missing_shipment": [r[0] for r in conn.execute(MISSING_SHIPMENT_SQL + _farm_in(member, "f.id")).fetchall()],
     }
 
     def one_plus(gender: str) -> dict:
-        value = _num(one(ONE_PLUS_SQL, gender)) or 0.0           # 기존 앱: 값이 없거나 0 이면 0.0
+        value = _num(one(ONE_PLUS_SQL + _farm_in(member), gender)) or 0.0           # 기존 앱: 값이 없거나 0 이면 0.0
         # 기준 연도는 1년치가 다 채워진 작년 (올해는 누계라 연중에 변함). 작년 값이 없으면 가장 최근 연도.
         gq = nat.get(gender, {}).get("grade_quality", {})
         base_year = now.year - 1
@@ -122,7 +132,7 @@ def build(conn, now: datetime | None = None) -> dict:
     years = list(range(START_YEAR, now.year + 1))
     genders = {}
     for g in ("거세", "암"):
-        rows = conn.execute(YEARLY_SQL, (g, now.year)).fetchall()
+        rows = conn.execute(YEARLY_SQL.replace("GROUP BY", _farm_in(member) + " GROUP BY", 1), (g, now.year)).fetchall()
         by_year = {int(r["year"]): {k: _num(r[k]) for k in r.keys() if k != "year"} for r in rows}
         for v in by_year.values():                                      # 정수 두수는 정수로
             v["farms"] = int(v["farms"] or 0)
@@ -135,7 +145,7 @@ def build(conn, now: datetime | None = None) -> dict:
         }
 
     compare = []
-    for r in conn.execute(COMPARE_SQL).fetchall():
+    for r in conn.execute(COMPARE_SQL.replace("GROUP BY", f"WHERE 1=1{_farm_in(member)} GROUP BY", 1)).fetchall():
         compare.append({"gender": r["gender"], "heads": int(r["heads"]),
                         **{k: _num(r[k]) for k in ("carcass_weight", "bms", "ribeye", "backfat", "q1plus", "month_age")}})
 
@@ -144,4 +154,5 @@ def build(conn, now: datetime | None = None) -> dict:
         "trend": {"years": years, "metrics": [{"key": k, "label": label} for k, label in TREND_METRICS], "genders": genders},
         "compare": compare,
         "national_source": source,
+        "member": member,
     }

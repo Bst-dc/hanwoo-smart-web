@@ -48,6 +48,7 @@ class FarmIn(BaseModel):
     region: str = Field("", max_length=30)
     breeding_type: Literal["비육우", "일관사육", "번식우"] = "비육우"
     total_heads: int = Field(100, ge=0, le=100000)
+    member_type: Literal["조합원", "비조합원"] = "조합원"
     confirm_duplicate: bool = False
 
 

@@ -33,8 +33,12 @@ function renderFarmSelect() {
     sel.innerHTML = '<option value="">등록된 농가가 없습니다</option>';
     return;
   }
-  sel.innerHTML = '<option value="">전체 농가</option>' + state.farms.map((f) =>
-    `<option value="${f.id}" ${String(f.id) === String(state.farmId) ? "selected" : ""}>${esc(f.name)}</option>`).join("");
+  const opt = (f) => `<option value="${f.id}" ${String(f.id) === String(state.farmId) ? "selected" : ""}>${esc(f.name)}</option>`;
+  const group = (type) => {
+    const list = state.farms.filter((f) => f.member_type === type);
+    return list.length ? `<optgroup label="${type} (${list.length})">${list.map(opt).join("")}</optgroup>` : "";
+  };
+  sel.innerHTML = '<option value="">전체 농가</option>' + group("조합원") + group("비조합원");
 }
 
 function selectFarm(id) {

@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS farms (
     side_job TEXT,
     breeding_type TEXT DEFAULT '비육우',
     total_heads INTEGER DEFAULT 0,
+    member_type TEXT NOT NULL DEFAULT '조합원',
     created_at TEXT DEFAULT {_NOW}
 );
 CREATE TABLE IF NOT EXISTS visits (
@@ -102,7 +103,7 @@ ALTER TABLE ai_reports ENABLE ROW LEVEL SECURITY;
 
 # ensure_schema 가 이것들이 다 있으면 DDL 을 건너뛴다 (표 잠금을 잡지 않도록)
 REQUIRED_COLUMNS = [
-    ("farms", "region"), ("farms", "full_time"), ("farms", "side_job"),
+    ("farms", "region"), ("farms", "full_time"), ("farms", "side_job"), ("farms", "member_type"),
     ("field_surveys", "survey_data"), ("field_surveys", "updated_at"),
     ("ai_reports", "report_mode"), ("ai_reports", "created_at"),
 ]
@@ -110,9 +111,15 @@ REQUIRED_COLUMNS = [
 # 백업 파일(.db)용. 운영 DB(Turso)의 표 정의를 그대로 옮겨, 백업 파일이 이관 전과 같은 모양이 되게 한다.
 # export_to_sqlite 가 두 번 실행하므로 IF NOT EXISTS 여야 한다.
 SQLITE_DDL = """
-CREATE TABLE IF NOT EXISTS farms (id INTEGER PRIMARY KEY AUTOINCREMENT, farm_code TEXT UNIQUE, farm_name TEXT NOT NULL, owner_name TEXT, phone TEXT, address TEXT, region TEXT, full_time TEXT DEFAULT '전업', side_job TEXT, breeding_type TEXT DEFAULT '비육우', total_heads INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
+CREATE TABLE IF NOT EXISTS farms (id INTEGER PRIMARY KEY AUTOINCREMENT, farm_code TEXT UNIQUE, farm_name TEXT NOT NULL, owner_name TEXT, phone TEXT, address TEXT, region TEXT, full_time TEXT DEFAULT '전업', side_job TEXT, breeding_type TEXT DEFAULT '비육우', total_heads INTEGER DEFAULT 0, member_type TEXT NOT NULL DEFAULT '조합원', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS visits (id INTEGER PRIMARY KEY AUTOINCREMENT, farm_id INTEGER NOT NULL, visit_number INTEGER NOT NULL DEFAULT 1, visit_date DATE NOT NULL, consultant_name TEXT, status TEXT DEFAULT 'completed', created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (farm_id) REFERENCES farms (id) ON DELETE CASCADE);
 CREATE TABLE IF NOT EXISTS field_surveys (id INTEGER PRIMARY KEY AUTOINCREMENT, visit_id INTEGER UNIQUE NOT NULL, facility_info TEXT, feed_info TEXT, consult_notes TEXT, consultant_memo TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, survey_data TEXT, updated_at DATETIME, FOREIGN KEY (visit_id) REFERENCES visits (id) ON DELETE CASCADE);
 CREATE TABLE IF NOT EXISTS shipment_records (id INTEGER PRIMARY KEY AUTOINCREMENT, farm_id INTEGER NOT NULL, animal_no TEXT UNIQUE NOT NULL, gender TEXT, slaughter_date DATE, slaughter_year INTEGER, month_age INTEGER, carcass_weight REAL, grade_quality TEXT, grade_yield TEXT, bms INTEGER, backfat REAL, ribeye REAL, price_per_kg INTEGER, total_price INTEGER, data_source TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (farm_id) REFERENCES farms (id) ON DELETE CASCADE);
 CREATE TABLE IF NOT EXISTS ai_reports (id INTEGER PRIMARY KEY AUTOINCREMENT, visit_id INTEGER NOT NULL, report_type TEXT DEFAULT 'final', report_mode TEXT NOT NULL DEFAULT '일반', full_markdown TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (visit_id) REFERENCES visits (id) ON DELETE CASCADE, UNIQUE(visit_id, report_mode));
 """
+
+# 나중에 추가된 컬럼 보완용 (기존 DB 에 컬럼이 없을 때 ensure_schema 가 실행). 기존 농가는 모두 조합원이다.
+EXTRA_SQL = [
+    "ALTER TABLE farms ADD COLUMN IF NOT EXISTS member_type TEXT NOT NULL DEFAULT '조합원'",
+]
+MEMBER_TYPES = ("조합원", "비조합원")
