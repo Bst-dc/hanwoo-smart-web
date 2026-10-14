@@ -51,7 +51,7 @@ def list_farms(conn=Depends(get_db)):
         out.append(FarmOption(
             id=f["id"], label=label, farm_name=f["farm_name"], farm_code=f["farm_code"],
             owner_name=f["owner_name"], region=region, breeding_type=f["breeding_type"],
-            total_heads=f["total_heads"],
+            total_heads=f["total_heads"], member_type=f["member_type"] or "조합원",
         ))
     return out
 
@@ -75,7 +75,7 @@ def check_duplicate(name: str = "", code: str = "", conn=Depends(get_db)):
         return None
     return FarmOption(id=r["id"], label=r["farm_name"], farm_name=r["farm_name"], farm_code=r["farm_code"],
                       owner_name=r["owner_name"], region=r["region"], breeding_type=r["breeding_type"],
-                      total_heads=r["total_heads"])
+                      total_heads=r["total_heads"], member_type=r["member_type"] or "조합원")
 
 
 @router.post("", response_model=FarmCreated, status_code=201,
@@ -93,12 +93,14 @@ def create_farm(body: FarmCreate, conn=Depends(get_db)):
                        "여기서 새로 저장하면 출하성적과 조사표가 서로 다른 농가로 쪼개져 연결되지 않습니다."),
             "duplicate_id": dup["id"],
         })
-    final_code = code or f"F{int(datetime.now().timestamp()) % 10000}"
+    # 번호를 비우면 자동 번호: 조합원 F+숫자, 비조합원 N+숫자 (비조합원은 조합원번호가 없는 게 정상)
+    prefix = "N" if body.member_type == "비조합원" else "F"
+    final_code = code or f"{prefix}{int(datetime.now().timestamp()) % 10000}"
     try:
         new_id = conn.execute(
-            "INSERT INTO farms (farm_code, farm_name, owner_name, region, breeding_type, total_heads)"
-            " VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
-            (final_code, name, body.owner_name, body.region, body.breeding_type, body.total_heads),
+            "INSERT INTO farms (farm_code, farm_name, owner_name, region, breeding_type, total_heads, member_type)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id",
+            (final_code, name, body.owner_name, body.region, body.breeding_type, body.total_heads, body.member_type),
         ).fetchone()[0]
         conn.commit()
     except IntegrityErrors as e:

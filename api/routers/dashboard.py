@@ -68,14 +68,20 @@ COMPARE_SQL = """
     ORDER BY gender
 """
 METRIC_KEYS = list(YearMetrics.model_fields)
+MEMBER_PATTERN = "^(전체|조합원|비조합원)$"
+
+
+def _farm_in(member: str, col: str = "farm_id") -> str:
+    """조합원/비조합원만 보는 조건. '전체'면 빈 문자열 (기존 SQL 그대로). member 는 정규식으로 걸러진 값이라 직접 붙여도 안전하다."""
+    return "" if member == "전체" else f" AND {col} IN (SELECT id FROM farms WHERE member_type = '{member}')"
 
 
 def _num(v):
     return None if v is None else float(v)
 
 
-def _plus1(conn, stats, gender_key) -> Plus1Rate:
-    row = conn.execute(PLUS1_SQL, (gender_key,)).fetchone()
+def _plus1(conn, stats, gender_key, member="전체") -> Plus1Rate:
+    row = conn.execute(PLUS1_SQL + _farm_in(member), (gender_key,)).fetchone()
     value = float(row[0]) if row and row[0] else 0.0
     # 기준 연도는 1년치가 다 채워진 작년 통계 (올해는 누계라 연중에 계속 변함). 없으면 가장 최근 연도.
     gq = stats.get(gender_key, {}).get("grade_quality", {})
@@ -89,25 +95,27 @@ def _plus1(conn, stats, gender_key) -> Plus1Rate:
 
 
 @router.get("/summary", response_model=DashboardSummary)
-def summary(conn=Depends(get_db)):
-    count = lambda table: conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+def summary(member: str = Query("전체", pattern=MEMBER_PATTERN), conn=Depends(get_db)):
+    where = lambda col: f" WHERE 1=1{_farm_in(member, col)}"
+    count = lambda table, col: conn.execute(f"SELECT COUNT(*) FROM {table}{where(col)}").fetchone()[0]
     stats = ns.national_stats()
     return DashboardSummary(
-        total_farms=count("farms"),
-        total_visits=count("visits"),
-        total_shipments=count("shipment_records"),
-        steer_plus1=_plus1(conn, stats, "거세"),
-        cow_plus1=_plus1(conn, stats, "암"),
-        farms_missing_survey=[r[0] for r in conn.execute(MISSING_SURVEY_SQL).fetchall()],
-        farms_missing_shipment=[r[0] for r in conn.execute(MISSING_SHIPMENT_SQL).fetchall()],
+        total_farms=count("farms", "id"),
+        total_visits=count("visits", "farm_id"),
+        total_shipments=count("shipment_records", "farm_id"),
+        steer_plus1=_plus1(conn, stats, "거세", member),
+        cow_plus1=_plus1(conn, stats, "암", member),
+        farms_missing_survey=[r[0] for r in conn.execute(MISSING_SURVEY_SQL + _farm_in(member, "f.id")).fetchall()],
+        farms_missing_shipment=[r[0] for r in conn.execute(MISSING_SHIPMENT_SQL + _farm_in(member, "f.id")).fetchall()],
     )
 
 
 @router.get("/yearly", response_model=YearlyTrend)
-def yearly(gender: str = Query("거세", pattern="^(거세|암)$"), conn=Depends(get_db)):
+def yearly(gender: str = Query("거세", pattern="^(거세|암)$"), member: str = Query("전체", pattern=MEMBER_PATTERN),
+           conn=Depends(get_db)):
     """연도별 추이·집계표. 출하가 없는 해도 전국값은 채워서 돌려준다(차트의 전국선이 끊기지 않게)."""
     current_year = datetime.now().year
-    found = {r["year"]: r for r in conn.execute(YEARLY_SQL, (gender, START_YEAR, current_year)).fetchall()}
+    found = {r["year"]: r for r in conn.execute(YEARLY_SQL.replace("GROUP BY", _farm_in(member) + " GROUP BY", 1), (gender, START_YEAR, current_year)).fetchall()}
     stats = ns.national_stats()
     rows = []
     for y in range(START_YEAR, current_year + 1):
@@ -123,10 +131,10 @@ def yearly(gender: str = Query("거세", pattern="^(거세|암)$"), conn=Depends
 
 
 @router.get("/gender-compare", response_model=list[GenderCompareRow])
-def gender_compare(conn=Depends(get_db)):
+def gender_compare(member: str = Query("전체", pattern=MEMBER_PATTERN), conn=Depends(get_db)):
     """거세우 vs 암소(수소 포함) 전체 누적 평균."""
     out = []
-    for r in conn.execute(COMPARE_SQL).fetchall():
+    for r in conn.execute(COMPARE_SQL.replace("GROUP BY", f"WHERE 1=1{_farm_in(member)} GROUP BY", 1)).fetchall():
         out.append(GenderCompareRow(
             gender=r["gender"] or "(미입력)", heads=r["heads"],
             **{k: _num(r[k]) for k in ["carcass_weight", "bms", "ribeye", "backfat", "plus1_rate", "month_age"]},

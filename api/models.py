@@ -25,15 +25,17 @@ class FarmOption(BaseModel):
     region: str | None = Field(None, description="방문조사표에 적힌 최근 지역이 있으면 그 값")
     breeding_type: str | None = None
     total_heads: int | None = None
+    member_type: Literal["조합원", "비조합원"] = "조합원"
 
 
 class FarmCreate(BaseModel):
-    farm_code: str = Field("", max_length=50, description="조합원 번호. 비우면 F+숫자 4자리로 자동 생성")
+    farm_code: str = Field("", max_length=50, description="조합원 번호. 비우면 자동 생성 (조합원 F+숫자, 비조합원 N+숫자)")
     farm_name: str = Field(min_length=1, max_length=100)
     owner_name: str = Field("", max_length=50)
     region: str = Field("", max_length=50)
     breeding_type: Literal["비육우", "일관사육", "번식우"] = "비육우"
     total_heads: int = Field(100, ge=0, le=100000)
+    member_type: Literal["조합원", "비조합원"] = "조합원"
     confirm_duplicate: bool = Field(False, description="이름·조합원번호가 같은 농가가 있어도 별개 농가로 등록")
 
 

@@ -13,7 +13,8 @@ const METRICS = [
   ["month_age", "출하월령"],
 ];
 const GENDER_LABEL = { 거세: "거세우", 암: "암소", 수: "수소" };
-const ui = { gender: "거세", metric: "carcass_weight", cmpMetric: "carcass_weight" };
+const MEMBERS = ["전체", "조합원", "비조합원"];
+const ui = { gender: "거세", metric: "carcass_weight", cmpMetric: "carcass_weight", member: "전체" };
 const charts = {};
 
 const f1 = (v) => (v === null || v === undefined ? "-" : Number(v).toFixed(1));
@@ -137,7 +138,7 @@ function yearlyTable(rows) {
 }
 
 async function loadTrend() {
-  const { rows } = await api(`/api/dashboard/yearly?gender=${encodeURIComponent(ui.gender)}`);
+  const { rows } = await api(`/api/dashboard/yearly?gender=${encodeURIComponent(ui.gender)}&member=${encodeURIComponent(ui.member)}`);
   const g = GENDER_LABEL[ui.gender];
   document.getElementById("trend-title").textContent = `📈 연도별 성적 추이 (${g} · 방문농가 전체 vs 전국평균)`;
   document.getElementById("table-title").textContent = `📋 연도별 전체 집계표 (${g})`;
@@ -192,10 +193,16 @@ function compareTable(rows) {
 const options = (list, selected) => list.map(([k, l]) => `<option value="${k}" ${k === selected ? "selected" : ""}>${esc(l)}</option>`).join("");
 
 export async function renderDashboard(el) {
-  const [s, cmp] = await Promise.all([api("/api/dashboard/summary"), api("/api/dashboard/gender-compare")]);
+  const q = `?member=${encodeURIComponent(ui.member)}`;
+  const [s, cmp] = await Promise.all([api(`/api/dashboard/summary${q}`), api(`/api/dashboard/gender-compare${q}`)]);
 
   el.innerHTML = `
-    <h1 class="text-2xl font-bold mb-4">종합 현황 대시보드</h1>
+    <h1 class="text-2xl font-bold mb-3">종합 현황 대시보드</h1>
+    <div class="flex items-center gap-2 mb-4" role="radiogroup" aria-label="농가 구분">
+      <span class="text-sm text-muted mr-1">농가 구분</span>
+      ${MEMBERS.map((m) => `<button data-member="${m}" role="radio" aria-checked="${m === ui.member}"
+          class="member-btn rounded-full border px-3 py-1 text-sm ${m === ui.member ? "bg-brand text-white border-brand" : "bg-white border-line"}">${m}</button>`).join("")}
+    </div>
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
       ${kpi("총 관리 농가 수", s.total_farms, "농가")}
       ${kpi("누적 현장 방문 횟수", s.total_visits, "회")}
@@ -240,6 +247,10 @@ export async function renderDashboard(el) {
     </div>` : `<p class="text-sm text-muted">등록된 출하 성적이 없습니다.</p>`}
   `;
 
+  el.querySelectorAll(".member-btn").forEach((b) => b.addEventListener("click", () => {
+    ui.member = b.dataset.member;
+    renderDashboard(el).catch((e) => { el.innerHTML = `<div class="rounded-xl border border-neg/40 bg-white p-4 text-neg text-sm">⚠️ ${esc(e.message)}</div>`; });
+  }));
   el.querySelectorAll(".gender-btn").forEach((b) => b.addEventListener("click", () => {
     ui.gender = b.dataset.gender;
     el.querySelectorAll(".gender-btn").forEach((x) => {

@@ -78,7 +78,10 @@
       <details id="farm-new" class="rounded-xl bg-white border border-line p-4">
         <summary class="cursor-pointer text-sm font-semibold">➕ 신규 농가 등록</summary>
         <form id="farm-form" class="space-y-2 mt-3 text-sm" novalidate>
-          <label class="block">조합원 번호<input name="farm_code" placeholder="예: M1234" class="mt-1 w-full rounded-lg border border-line px-2 py-1.5"></label>
+          <label class="block">구분
+            <select name="member_type" class="mt-1 w-full rounded-lg border border-line bg-white px-2 py-1.5">
+              <option>조합원</option><option>비조합원</option></select></label>
+          <label class="block"><span id="farm-code-label">조합원 번호</span><input name="farm_code" placeholder="예: M1234" class="mt-1 w-full rounded-lg border border-line px-2 py-1.5"></label>
           <label class="block">농가명*<input name="farm_name" required placeholder="예: 한우사랑농장" class="mt-1 w-full rounded-lg border border-line px-2 py-1.5"></label>
           <label class="block">대표자명<input name="owner_name" placeholder="홍길동" class="mt-1 w-full rounded-lg border border-line px-2 py-1.5"></label>
           <label class="block">지역<input name="region" placeholder="강원 횡성" class="mt-1 w-full rounded-lg border border-line px-2 py-1.5"></label>

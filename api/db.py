@@ -24,6 +24,8 @@ def using_supabase() -> bool:
 
 def connect():
     if using_supabase():
+        db_adapter.ensure_schema(db_schema.SCHEMA, db_schema.PG_DDL, extra_sql=db_schema.EXTRA_SQL,
+                                 required_tables=db_schema.TABLES, required_columns=db_schema.REQUIRED_COLUMNS)
         return db_adapter.connect(db_schema.SCHEMA)
     fresh = not LOCAL_DB.exists()
     LOCAL_DB.parent.mkdir(exist_ok=True)
@@ -33,6 +35,10 @@ def connect():
     if fresh:
         log.info("로컬 DB 새로 만듦: %s", LOCAL_DB)
         conn.executescript(db_schema.SQLITE_DDL)
+    elif "member_type" not in {r[1] for r in conn.execute("PRAGMA table_info(farms)")}:
+        log.info("farms 에 member_type 칸 추가 (기존 농가는 모두 조합원)")
+        conn.execute("ALTER TABLE farms ADD COLUMN member_type TEXT NOT NULL DEFAULT '조합원'")
+        conn.commit()
     return conn
 
 

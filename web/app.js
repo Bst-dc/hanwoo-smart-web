@@ -58,7 +58,12 @@ async function loadFarms() {
   let saved = state.farmId;
   if (saved === null) { try { saved = Number(sessionStorage.getItem("farmId")); } catch {} }
   state.farmId = state.farms.some((f) => f.id === saved) ? saved : state.farms[0].id;
-  sel.innerHTML = state.farms.map((f) => `<option value="${f.id}" ${f.id === state.farmId ? "selected" : ""}>${esc(f.label)}</option>`).join("");
+  const opt = (f) => `<option value="${f.id}" ${f.id === state.farmId ? "selected" : ""}>${esc(f.label)}</option>`;
+  const group = (type) => {
+    const list = state.farms.filter((f) => f.member_type === type);
+    return list.length ? `<optgroup label="${type} (${list.length})">${list.map(opt).join("")}</optgroup>` : "";
+  };
+  sel.innerHTML = group("조합원") + group("비조합원");
 }
 
 document.getElementById("farm-select").addEventListener("change", (e) => {
@@ -101,6 +106,11 @@ farmForm.addEventListener("input", (e) => {
   }, 300);
 });
 farmForm.addEventListener("change", (e) => { if (e.target.name === "confirm_duplicate") syncSaveButton(); });
+farmForm.elements.member_type.addEventListener("change", (e) => {   // 비조합원은 번호가 없는 게 정상이다
+  const non = e.target.value === "비조합원";
+  document.getElementById("farm-code-label").textContent = non ? "관리 번호 (선택, 비우면 자동)" : "조합원 번호";
+  farmForm.elements.farm_code.placeholder = non ? "비워 두면 N숫자 자동 부여" : "예: M1234";
+});
 
 farmForm.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -116,7 +126,7 @@ farmForm.addEventListener("submit", async (e) => {
   btn.textContent = "저장 중…";
   try {
     const res = await api("/api/farms", { method: "POST", body: JSON.stringify({
-      farm_code: f.farm_code.value, farm_name: f.farm_name.value, owner_name: f.owner_name.value,
+      member_type: f.member_type.value, farm_code: f.farm_code.value, farm_name: f.farm_name.value, owner_name: f.owner_name.value,
       region: f.region.value, breeding_type: f.breeding_type.value, total_heads: Number(f.total_heads.value || 0),
       confirm_duplicate: Boolean(f.confirm_duplicate?.checked),
     }) });
