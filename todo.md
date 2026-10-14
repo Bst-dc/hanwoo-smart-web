@@ -63,7 +63,7 @@
   - 자동 배포는 서버가 2분마다 GitHub을 받아 가는 방식으로 바뀌어 더는 쓰지 않습니다.
 - [x] **서버 `~/.ssh/authorized_keys`에서 `github-deploy` 줄 삭제** (2026-10-14 완료, 백업 `~/.ssh/authorized_keys.bak-20261014` 는 며칠 뒤 삭제)
 - [x] **내 PC 사용자 폴더의 `deploy_key.pub` 삭제** (2026-10-14 완료, 비밀키 `deploy_key`는 이미 지워짐)
-- [ ] **옛 사본 폴더 `hanwoo-deploy-claude`를 지울지 결정**
+- [x] **옛 사본 폴더 `hanwoo-deploy-claude` 정리** (2026-10-14 완료: worktree·브랜치 `claude-work` 제거. 미커밋 변경 125줄은 `Documents\hanwoo-backup\hanwoo-deploy-claude_미커밋변경_20261014.patch` 로 보관, 옛 DB는 복사하지 않음)
   - 서버가 쓰지 않는 9/28 무렵 사본입니다. 원하면 Claude가 남길 것이 있는지 먼저 확인합니다.
 
 ---
