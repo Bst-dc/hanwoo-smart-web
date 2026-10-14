@@ -47,8 +47,18 @@
     <header class="app-header sticky top-0 z-20 bg-white border-b border-line">
       <div class="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
         <span class="w-8 h-8 shrink-0 rounded-lg bg-brand text-white text-sm font-bold grid place-items-center" aria-hidden="true">컨</span>
-        <label class="sr-only" for="farm-select">컨설팅 농가 선택</label>
-        <select id="farm-select" class="flex-1 min-w-0 rounded-xl border border-line bg-white px-3 py-2 text-base font-semibold truncate focus:outline-2 focus:outline-brand"></select>
+        <div id="farm-picker" class="relative flex-1 min-w-0">
+          <button id="farm-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="컨설팅 농가 선택"
+                  class="w-full flex items-center justify-between gap-2 rounded-xl border border-line bg-white px-3 py-2 text-base font-semibold text-left focus:outline-2 focus:outline-brand">
+            <span id="farm-btn-label" class="truncate">전체 농가</span><span aria-hidden="true" class="text-muted">▾</span></button>
+          <div id="farm-panel" class="hidden absolute left-0 right-0 top-full mt-1 z-30 rounded-2xl border border-line bg-white shadow-lg p-2">
+            <label class="sr-only" for="farm-search">농가 검색</label>
+            <input id="farm-search" type="search" autocomplete="off" placeholder="농가명·대표자·지역 검색"
+                   class="w-full rounded-xl border border-line bg-white px-3 py-2 text-base focus:outline-2 focus:outline-brand">
+            <div id="farm-scope" class="flex gap-2 mt-2" role="group" aria-label="농가 구분"></div>
+            <div id="farm-list" class="max-h-[55vh] overflow-y-auto mt-2" role="listbox" aria-label="농가 목록"></div>
+          </div>
+        </div>
         <button id="logout" class="hidden shrink-0 rounded-xl border border-line bg-white px-3 py-2 text-sm active:bg-panel">로그아웃</button>
       </div>
     </header>

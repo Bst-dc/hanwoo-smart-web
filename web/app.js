@@ -2,6 +2,7 @@
 //   #/dashboard  #/shipment  #/survey  #/report  #/data
 import { api, card, esc, state, store, toast } from "./api.js";
 import { destroyCharts } from "./charts.js";
+import { initFarmPicker, renderFarmPicker } from "./farmpicker.js";
 import { renderDashboard } from "./pages/dashboard.js";
 import { renderData } from "./pages/data.js";
 import { renderShipment } from "./pages/shipment.js";
@@ -28,17 +29,7 @@ function renderTabbar() {
 
 // ---------- 농가 선택 ----------
 function renderFarmSelect() {
-  const sel = document.getElementById("farm-select");
-  if (!state.farms.length) {
-    sel.innerHTML = '<option value="">등록된 농가가 없습니다</option>';
-    return;
-  }
-  const opt = (f) => `<option value="${f.id}" ${String(f.id) === String(state.farmId) ? "selected" : ""}>${esc(f.name)}</option>`;
-  const group = (type) => {
-    const list = state.farms.filter((f) => f.member_type === type);
-    return list.length ? `<optgroup label="${type} (${list.length})">${list.map(opt).join("")}</optgroup>` : "";
-  };
-  sel.innerHTML = '<option value="">전체 농가</option>' + group("조합원") + group("비조합원");
+  renderFarmPicker();
 }
 
 function selectFarm(id) {
@@ -127,7 +118,7 @@ document.getElementById("logout").addEventListener("click", async () => {
   showLogin();
 });
 
-document.getElementById("farm-select").addEventListener("change", (e) => selectFarm(e.target.value));
+initFarmPicker({ onSelect: selectFarm });
 state.onUnauthorized = showLogin;
 window.addEventListener("hashchange", () => { document.getElementById("flash").innerHTML = ""; renderPage(); });
 
