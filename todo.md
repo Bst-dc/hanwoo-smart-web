@@ -59,7 +59,7 @@
 
 ## 5. 정리 (배포 설정 바꾼 뒤 남은 것)
 
-- [ ] **GitHub 저장소 Settings → Secrets에서 `LIGHTSAIL_*` 삭제**
+- [x] **GitHub 저장소 Settings → Secrets에서 `LIGHTSAIL_*` 삭제** (2026-10-14 해당 없음으로 닫음: Secrets에 그 이름이 없고, 로컬 저장소 4곳 어디에도 `LIGHTSAIL`을 쓰는 워크플로·기록이 없음)
   - 자동 배포는 서버가 2분마다 GitHub을 받아 가는 방식으로 바뀌어 더는 쓰지 않습니다.
 - [x] **서버 `~/.ssh/authorized_keys`에서 `github-deploy` 줄 삭제** (2026-10-14 완료, 백업 `~/.ssh/authorized_keys.bak-20261014` 는 며칠 뒤 삭제)
 - [x] **내 PC 사용자 폴더의 `deploy_key.pub` 삭제** (2026-10-14 완료, 비밀키 `deploy_key`는 이미 지워짐)
