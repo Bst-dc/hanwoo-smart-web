@@ -61,8 +61,8 @@
 
 - [ ] **GitHub 저장소 Settings → Secrets에서 `LIGHTSAIL_*` 삭제**
   - 자동 배포는 서버가 2분마다 GitHub을 받아 가는 방식으로 바뀌어 더는 쓰지 않습니다.
-- [ ] **서버 `~/.ssh/authorized_keys`에서 `github-deploy` 줄 삭제**
-- [ ] **내 PC 사용자 폴더의 `deploy_key.pub` 삭제** (비밀키 `deploy_key`는 이미 지워짐)
+- [x] **서버 `~/.ssh/authorized_keys`에서 `github-deploy` 줄 삭제** (2026-10-14 완료, 백업 `~/.ssh/authorized_keys.bak-20261014` 는 며칠 뒤 삭제)
+- [x] **내 PC 사용자 폴더의 `deploy_key.pub` 삭제** (2026-10-14 완료, 비밀키 `deploy_key`는 이미 지워짐)
 - [ ] **옛 사본 폴더 `hanwoo-deploy-claude`를 지울지 결정**
   - 서버가 쓰지 않는 9/28 무렵 사본입니다. 원하면 Claude가 남길 것이 있는지 먼저 확인합니다.
 
