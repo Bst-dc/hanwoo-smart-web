@@ -77,6 +77,16 @@ function listView(d) {
   return `
     <div class="rounded-2xl bg-brand-tint border border-brand-line p-3 text-sm">📌 <b>${esc(d.farm.name)}</b> <span class="text-muted">(조합원번호 ${esc(d.farm.code || "미등록")}, ${esc(d.farm.region || "지역 미입력")})</span></div>
     <button id="sv-new" class="${btn} w-full mt-3 bg-brand text-white">＋ 새 방문조사 작성 (${num(next)}차)</button>
+    <details class="mt-3 rounded-2xl bg-white border border-line p-4">
+      <summary class="cursor-pointer text-sm font-semibold">🖨️ 종이 조사표로 현장에서 적고 나중에 입력하기</summary>
+      <p class="text-xs text-muted mt-2">A4 로 인쇄해 손으로 적은 뒤, 위 '새 방문조사 작성'에 같은 순서로 옮겨 입력하세요. ${esc(d.farm.name)} 농가의 이름·번호·지역은 미리 적혀 나옵니다.</p>
+      <div class="grid grid-cols-2 gap-2 mt-3">
+        <a class="${btn} text-center border border-line bg-white" href="/api/surveys/sheet?farm_id=${d.farm.id}&inline=1" target="_blank" rel="noopener">인쇄용 열기 (${esc(d.farm.name)})</a>
+        <a class="${btn} text-center border border-line bg-white" href="/api/surveys/sheet?farm_id=${d.farm.id}">파일로 내려받기</a>
+        <a class="${btn} text-center border border-line bg-white" href="/api/surveys/sheet?inline=1" target="_blank" rel="noopener">빈 양식 열기</a>
+        <a class="${btn} text-center border border-line bg-white" href="/api/surveys/sheet">빈 양식 내려받기</a>
+      </div>
+    </details>
     <h3 class="text-base font-bold mt-5 mb-2">방문 기록 <span class="text-sm font-normal text-muted">${num(d.visits.length)}회</span></h3>
     ${d.visits.length ? `<div class="space-y-2">${d.visits.slice().reverse().map((v) => `
       <button data-visit="${v.id}" class="open w-full text-left rounded-2xl bg-white border border-line p-4 active:bg-panel">
