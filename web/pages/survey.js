@@ -209,6 +209,13 @@ export async function renderSurvey(el, { farm, farms, onPickFarm, onSaved = asyn
   if (!farm) {
     el.innerHTML = card(`<h2 class="text-lg font-bold mb-1">2단계 · 현장방문조사</h2>
       <p class="text-sm text-muted mb-3">먼저 조사할 농가를 고르세요. (위쪽 목록에서 골라도 됩니다)</p>
+      <div class="mb-4 rounded-xl border border-line bg-panel p-3">
+        <p class="text-sm font-semibold mb-2">🖨️ 종이 조사표 (농가를 고르지 않고 빈 양식)</p>
+        <div class="grid grid-cols-2 gap-2">
+          <a class="rounded-xl border border-line bg-white px-3 py-2 min-h-[44px] flex items-center justify-center text-sm font-semibold" href="/api/surveys/sheet">빈 양식 내려받기</a>
+          <a class="rounded-xl border border-line bg-white px-3 py-2 min-h-[44px] flex items-center justify-center text-sm font-semibold" href="/api/surveys/sheet?inline=1" target="_blank" rel="noopener">빈 양식 열어 인쇄</a>
+        </div>
+      </div>
       <div class="space-y-2">${farms.map((f) => `
         <button data-farm="${f.id}" class="pick w-full text-left rounded-xl border border-line bg-white p-3 active:bg-panel">
           <span class="font-semibold">${esc(f.name)}</span><span class="text-xs text-muted ml-2">${esc(f.region)} · 방문 ${num(f.visits)}회</span></button>`).join("")}</div>`);
