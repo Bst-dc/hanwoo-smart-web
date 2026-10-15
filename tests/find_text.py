@@ -12,6 +12,6 @@ def search_file(filename, keyword):
                 if keyword in line:
                     print(f"{i+1}: {line.strip()}")
 
-search_file('streamlit_app.py', '개체이력번호')
-search_file('streamlit_app.py', '출하성적 추출')
-search_file('streamlit_app.py', '1단계')
+search_file('tests/legacy_snapshot/streamlit_app_legacy.py', '개체이력번호')
+search_file('tests/legacy_snapshot/streamlit_app_legacy.py', '출하성적 추출')
+search_file('tests/legacy_snapshot/streamlit_app_legacy.py', '1단계')

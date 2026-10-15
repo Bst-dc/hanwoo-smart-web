@@ -22,7 +22,7 @@ import pandas as pd  # noqa: E402
 import db_adapter  # noqa: E402
 import db_schema  # noqa: E402
 
-SOURCE = (ROOT / "streamlit_app.py").read_text(encoding="utf-8")
+SOURCE = (ROOT / "tests" / "legacy_snapshot" / "streamlit_app_legacy.py").read_text(encoding="utf-8")
 
 
 def _shipment_upserts():

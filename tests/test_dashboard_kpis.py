@@ -14,7 +14,7 @@ import sqlite3
 import unittest
 from pathlib import Path
 
-APP_PATH = Path(__file__).resolve().parents[1] / "streamlit_app.py"
+APP_PATH = Path(__file__).resolve().parents[1] / "tests" / "legacy_snapshot" / "streamlit_app_legacy.py"
 
 SCHEMA = """
 CREATE TABLE farms (

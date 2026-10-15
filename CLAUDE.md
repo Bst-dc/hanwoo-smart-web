@@ -1,5 +1,9 @@
 # CLAUDE.md
 
+> **2026-10-15 안내: 옛 Streamlit 앱은 운영에서 내렸다.** 지금 운영은 새 앱(FastAPI `api/` + `web/`, AWS `consulting-next`)뿐이다.
+> 아래 설명 중 Streamlit·`streamlit_app.py`·Streamlit Community Cloud 이야기는 **옛 앱 기준의 기록**이다. 옛 앱의 실행 가능한 전체는 git 태그 `legacy-streamlit` 에 있고,
+> `streamlit_app.py` 는 `tests/legacy_snapshot/streamlit_app_legacy.py`(규칙 비교 시험 전용, 실행하지 않음)로 옮겼다. 서버에서도 `consulting` 컨테이너를 내렸다(`/opt/hanwoo/deploy/*.bak-20261015-*` 에 이전 설정).
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Overview
