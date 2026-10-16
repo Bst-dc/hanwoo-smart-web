@@ -66,6 +66,23 @@ class ShipmentsTest(unittest.TestCase):
         self.assertEqual((c["C등급 출현율 (%)"]["diff"], c["C등급 출현율 (%)"]["diagnosis"]), ("33.5", "개선필요 (▲)"))
         self.assertEqual((c["출하월령 (개월)"]["diff"], c["출하월령 (개월)"]["diagnosis"]), ("-0.2", "단기출하 (우수)"))
 
+    def test_low_backfat_with_two_low_metrics_needs_improvement(self):
+        def rows(**d):
+            base = {"carcass_weight": 1.0, "bms": 1.0, "ribeye": 1.0, "backfat": 1.0}
+            base.update(d)
+            return base, [{"item": "등지방두께 (mm)", "diagnosis": "적정"}]
+        for diffs, expect in [
+            (dict(carcass_weight=-1, bms=-1, backfat=-0.5), "개선필요"),             # 2개 낮음 + 등지방 낮음
+            (dict(carcass_weight=-1, bms=-1, ribeye=-1, backfat=-0.1), "개선필요"),  # 3개 낮음
+            (dict(carcass_weight=-1, backfat=-0.5), "적정"),                          # 1개만 낮음
+            (dict(carcass_weight=-1, bms=-1, backfat=0.5), "적정"),                   # 등지방이 낮지 않음
+            (dict(carcass_weight=-1, bms=-1, backfat=0.0), "적정"),                   # 같으면 낮은 게 아님
+            (dict(carcass_weight=-1, bms=None, ribeye=-1, backfat=None), "적정"),     # 등지방 값 없음
+        ]:
+            d, comp = rows(**diffs)
+            shipments._flag_low_backfat(comp, d)
+            self.assertEqual(comp[0]["diagnosis"], expect, diffs)
+
     def test_profit_uses_weight_gap_times_21000_truncated(self):
         d = self.build(1)
         per_head = int((450.0 - 490.4) * 21000)

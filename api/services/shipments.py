@@ -73,6 +73,15 @@ def _nat_value(nat_g: dict, key: str, year: int):
     return nat_g.get(name, {}).get(year)
 
 
+def _flag_low_backfat(comparison, d):
+    """도체중·BMS·등심단면적 중 2개 이상이 전국 평균보다 낮고 등지방도 낮으면, 등지방 행 진단을 '개선필요'로 바꾼다."""
+    below = sum(1 for k in ("carcass_weight", "bms", "ribeye") if d[k] is not None and d[k] < 0)
+    if below >= 2 and d["backfat"] is not None and d["backfat"] < 0:
+        for c in comparison:
+            if c["item"].startswith("등지방두께"):
+                c["diagnosis"] = "개선필요"
+
+
 def farm_info(conn, farm_id: int):
     r = conn.execute("SELECT id, farm_name, farm_code, region FROM farms WHERE id = ?", (farm_id,)).fetchone()
     if r is None:
@@ -137,6 +146,7 @@ def build(conn, farm_id: int, year: int | None, gender: str | None, now: datetim
         row("C등급 출현율 (%)", "c_grade", "우수 (▼)", "개선필요 (▲)", lambda x: x <= 0),
         row("출하월령 (개월)", "month_age", "단기출하 (우수)", "지연출하", lambda x: x <= 0),
     ]
+    _flag_low_backfat(out["comparison"], d)
 
     # 최근 3년(농가에 성적이 있는 해 기준) 추이 — 지표마다 농가 평균과 그 해 전국 평균
     recent = sorted(years, reverse=True)[:3]
