@@ -52,19 +52,22 @@ class ShipmentsTest(unittest.TestCase):
     def build(self, farm, year=None, gender=None):
         return shipments.build(self.conn, farm, year, gender, NOW)
 
-    def test_all_years_compares_steers_against_latest_national(self):
+    def test_all_years_compares_steers_of_the_most_recent_year(self):
+        # 연도를 고르지 않으면 누적 평균이 아니라 성적이 있는 가장 최근 연도(2025) 거세우만 비교한다.
         d = self.build(1)
         self.assertEqual(d["years"], [2025, 2024])
-        self.assertEqual((d["cmp_gender"], d["gender_forced"], d["total_count"]), ("거세", True, 4))
-        self.assertEqual(d["national_year"], 2026)
+        self.assertEqual((d["cmp_gender"], d["gender_forced"], d["total_count"], d["cmp_year"]), ("거세", True, 2, 2025))
+        self.assertEqual(d["national_year"], 2025)
+        self.assertEqual(len(d["records"]), 5)       # 개체별 성적표는 여전히 전체 누적(2024·2025, 암소 포함)
         c = {r["item"]: r for r in d["comparison"]}
-        self.assertEqual(c["도체중 (kg)"], {"item": "도체중 (kg)", "farm": "450.0", "national": "490.4", "diff": "-40.4", "diagnosis": "미흡 (▼)"})
-        self.assertEqual((c["근내지방도 (BMS)"]["national"], c["근내지방도 (BMS)"]["diff"]), ("6.5", "-1.0"))   # 수동 보정 6.5
-        self.assertEqual((c["등심단면적 (㎠)"]["farm"], c["등심단면적 (㎠)"]["diagnosis"]), ("99.0", "미흡 (▼)"))
-        self.assertEqual((c["등지방두께 (mm)"]["diff"], c["등지방두께 (mm)"]["diagnosis"]), ("0.5", "적정"))     # +1.0 이하는 적정
+        # 2025 거세 s3(500,BMS7,110,12,1+,B,31)·s4(480,BMS3,96,16,2,C,33)의 손계산 평균
+        self.assertEqual(c["도체중 (kg)"], {"item": "도체중 (kg)", "farm": "490.0", "national": "478.1", "diff": "11.9", "diagnosis": "우수 (▲)"})
+        self.assertEqual((c["근내지방도 (BMS)"]["farm"], c["근내지방도 (BMS)"]["national"], c["근내지방도 (BMS)"]["diff"]), ("5.0", "6.3", "-1.3"))
+        self.assertEqual((c["등심단면적 (㎠)"]["farm"], c["등심단면적 (㎠)"]["diagnosis"]), ("103.0", "우수 (▲)"))
+        self.assertEqual((c["등지방두께 (mm)"]["diff"], c["등지방두께 (mm)"]["diagnosis"]), ("1.6", "과비주의 (과다)"))   # +1.0 초과
         self.assertEqual((c["1+이상 출현율 (%)"]["farm"], c["1+이상 출현율 (%)"]["diagnosis"]), ("50.0", "개선필요"))
-        self.assertEqual((c["C등급 출현율 (%)"]["diff"], c["C등급 출현율 (%)"]["diagnosis"]), ("33.5", "개선필요 (▲)"))
-        self.assertEqual((c["출하월령 (개월)"]["diff"], c["출하월령 (개월)"]["diagnosis"]), ("-0.2", "단기출하 (우수)"))
+        self.assertEqual((c["C등급 출현율 (%)"]["diff"], c["C등급 출현율 (%)"]["diagnosis"]), ("33.3", "개선필요 (▲)"))
+        self.assertEqual((c["출하월령 (개월)"]["diff"], c["출하월령 (개월)"]["diagnosis"]), ("0.3", "지연출하"))
 
     def test_low_backfat_with_two_low_metrics_needs_improvement(self):
         def rows(**d):
@@ -85,8 +88,8 @@ class ShipmentsTest(unittest.TestCase):
 
     def test_profit_uses_weight_gap_times_21000_truncated(self):
         d = self.build(1)
-        per_head = int((450.0 - 490.4) * 21000)
-        self.assertEqual(d["profit"], {"available": True, "per_head": per_head, "total": per_head * 4})
+        per_head = int((490.0 - 478.1) * 21000)      # 가장 최근 연도(2025) 거세우 2두 기준
+        self.assertEqual(d["profit"], {"available": True, "per_head": per_head, "total": per_head * 2})
 
     def test_records_include_every_gender_newest_first(self):
         d = self.build(1)

@@ -72,7 +72,8 @@ export async function renderShipment(el, { farm, farms, onPickFarm, onSaved = as
   const d = await api(`/api/farms/${farm.id}/shipments?${q}`);
   if (!isCurrent()) return;           // 기다리는 사이 다른 화면으로 옮겼으면 그리지 않는다
 
-  const yearCaption = filters.year ? `${filters.year}년` : "전체 누적";
+  const yearCaption = filters.year ? `${filters.year}년` : "전체 누적";             // 개체별 성적표 범위
+  const cmpCaption = filters.year ? `${filters.year}년` : (d.cmp_year ? `최근 ${d.cmp_year}년` : "전체 누적");   // 전국 비교 범위
   const gName = GENDER_NAME[d.cmp_gender] || d.cmp_gender;
   const seg = (val, label) => `<button data-g="${val}" class="gseg px-4 py-2 min-h-[44px] ${val ? "border-l border-line" : ""} ${filters.gender === val ? "bg-brand text-white font-semibold" : "bg-white text-muted"}" aria-pressed="${filters.gender === val}">${label}</button>`;
 
@@ -81,7 +82,7 @@ export async function renderShipment(el, { farm, farms, onPickFarm, onSaved = as
     body = card(`<p class="text-sm text-muted">${filters.year ? `${esc(filters.year)}년에 등록된 ${esc(gName)} 출하 성적이 없습니다. 다른 연도나 성별을 골라보세요.` : "등록된 출하 성적이 없습니다. 위 '출하성적 입력'에서 이력번호 조회나 엑셀로 성적을 먼저 입력해주세요."}</p>`);
   } else {
     body = `
-      <h3 class="text-base font-bold mt-5 mb-1">📊 전국 1:1 비교 <span class="text-sm font-normal text-muted">(${esc(gName)} 기준 · ${esc(yearCaption)} · 전국 ${d.national_year}년 평균)</span></h3>
+      <h3 class="text-base font-bold mt-5 mb-1">📊 전국 1:1 비교 <span class="text-sm font-normal text-muted">(${esc(gName)} 기준 · ${esc(cmpCaption)} · 전국 ${d.national_year}년 평균)</span></h3>
       ${d.gender_forced ? `<p class="text-xs text-muted mb-2">※ 성별 '전체'여도 전국 비교는 성별이 섞이지 않게 ${esc(gName)} 출하분만으로 계산합니다. 아래 개체별 성적표에는 전체 개체가 나옵니다.</p>` : ""}
       ${card(comparisonList(d.comparison))}
       <div class="grid grid-cols-2 gap-2 mt-3">
@@ -143,10 +144,10 @@ export async function renderShipment(el, { farm, farms, onPickFarm, onSaved = as
 
   if (!d.has_data) keep("sh-trend", null);   // 성적이 없는 화면으로 바뀌면 이전 차트를 정리한다
   else {
-    const sheet = () => compareSheetHtml(d, { gName, yearCaption });
+    const sheet = () => compareSheetHtml(d, { gName, yearCaption: cmpCaption });
     el.querySelector("#sh-print").addEventListener("click", () => openCompareSheet(sheet()));
     el.querySelector("#sh-dl").addEventListener("click", () =>
-      downloadCompareSheet(sheet(), `${d.farm.name}_전국비교표_${yearCaption.replace(/\s/g, "")}.html`));
+      downloadCompareSheet(sheet(), `${d.farm.name}_전국비교표_${cmpCaption.replace(/\s/g, "")}.html`));
     const sel = el.querySelector("#sh-metric");
     const draw = () => {
       const s = d.trend.series[sel.value];

@@ -99,15 +99,28 @@ def build(conn, farm_id: int, year: int | None, gender: str | None, now: datetim
 
     # 전국 비교는 성별이 섞이면 의미가 없으므로 한 성별로만 한다.
     # '전체'를 고르면 거세우로 비교하되, 거세우 출하가 없는 농가(그 연도)는 암소로 비교한다.
+    # 연도를 고르지 않은 '전체 누적'이어도 비교는 누적 평균이 아니라 가장 최근 연도(해당 성별 성적이 있는 해) 한 해로 한다.
+    cmp_year = year
+    if not cmp_year:
+        genders = (gender,) if gender else ("거세", "암")
+        cmp_year = conn.execute(
+            f"SELECT MAX(slaughter_year) FROM shipment_records WHERE farm_id = ? AND gender IN ({','.join('?' * len(genders))})",
+            (farm_id, *genders)).fetchone()[0]
+        cmp_year = int(cmp_year) if cmp_year is not None else None
+
     cmp_gender = gender
     if not cmp_gender:
-        sql = "SELECT COUNT(*) FROM shipment_records WHERE farm_id = ? AND gender = '거세'" + (" AND slaughter_year = ?" if year else "")
-        steer_cnt = conn.execute(sql, (farm_id, year) if year else (farm_id,)).fetchone()[0]
+        sql = "SELECT COUNT(*) FROM shipment_records WHERE farm_id = ? AND gender = '거세'" + (" AND slaughter_year = ?" if cmp_year else "")
+        steer_cnt = conn.execute(sql, (farm_id, cmp_year) if cmp_year else (farm_id,)).fetchone()[0]
         cmp_gender = "거세" if steer_cnt > 0 else "암"
 
+    stats_year = " AND slaughter_year = ?" if cmp_year else ""
+    stats = conn.execute(STATS_SELECT + f" WHERE farm_id = ?{stats_year} AND gender = ?",
+                         (farm_id, *((cmp_year,) if cmp_year else ()), cmp_gender)).fetchone()
+
+    # 개체별 성적표는 화면에서 고른 연도 그대로(전체 누적이면 전부)
     where_year = " AND slaughter_year = ?" if year else ""
     params = (farm_id, year) if year else (farm_id,)
-    stats = conn.execute(STATS_SELECT + f" WHERE farm_id = ?{where_year} AND gender = ?", (*params, cmp_gender)).fetchone()
 
     gender_sql = " AND gender = ?" if gender else ""
     rec_rows = conn.execute(
@@ -118,7 +131,7 @@ def build(conn, farm_id: int, year: int | None, gender: str | None, now: datetim
                 "bms": _num(r["bms"]), "backfat": _num(r["backfat"]), "ribeye": _num(r["ribeye"]), "month_age": _num(r["month_age"])}
                for r in rec_rows]
 
-    out = {"years": years, "cmp_gender": cmp_gender, "gender_forced": not gender, "national_source": source,
+    out = {"years": years, "cmp_gender": cmp_gender, "gender_forced": not gender, "cmp_year": cmp_year, "national_source": source,
            "records": records, "total_count": int(stats["total_count"] or 0)}
     if out["total_count"] == 0:
         out["has_data"] = False
@@ -126,7 +139,7 @@ def build(conn, farm_id: int, year: int | None, gender: str | None, now: datetim
 
     nat = nat_all[cmp_gender]
     # 비교 기준 연도: 선택한 연도에 전국 통계가 있으면 그 해, 없으면 가장 최근 연도
-    cy = year if (year and year in nat.get("도체중", {})) else (national_stats.latest_year(nat_all, cmp_gender) or 2025)
+    cy = cmp_year if (cmp_year and cmp_year in nat.get("도체중", {})) else (national_stats.latest_year(nat_all, cmp_gender) or 2025)
     n = {k: _nat_value(nat, k, cy) for k, _ in TREND_METRICS}
     s = {"carcass_weight": stats["avg_weight"], "bms": stats["avg_bms"], "ribeye": stats["avg_ribeye"], "backfat": stats["avg_backfat"],
          "q1plus": stats["rate_1plus_above"], "c_grade": stats["rate_c_grade"], "month_age": stats["avg_month_age"]}
