@@ -107,10 +107,10 @@ export function compareSheetHtml(d, { gName, yearCaption }) {
 <h1>출하성적 전국 1:1 비교표</h1>
 <div class="meta"><b>${esc(f.name)}</b> (조합원번호 ${esc(f.code || "미등록")}, ${esc(f.region || "지역 미입력")}) · 출력일 ${esc(today)}</div>
 <div class="meta">${esc(gName)} 기준 · ${esc(yearCaption)} · 전국 ${esc(d.national_year)}년 평균 · 총 ${num(d.total_count)}두</div>
-<h2>전국 1:1 비교</h2>${compareTable(d.comparison)}
+<h2>전국 1:1 비교 <span class="note">(${esc(gName)} 기준 · ${esc(yearCaption)} · 전국 ${esc(d.national_year)}년 평균)</span></h2>${compareTable(d.comparison)}
 ${profit ? `<h2>추정 수익성</h2>${profit}` : ""}
-<h2>최근 ${d.trend.years.length}년 전국 1:1 종합 비교표 (${d.trend.years[0]}~${d.trend.years.at(-1)}년)</h2>${trendTable(d.trend)}
-${ch.html ? `<h2>성적 변화 추이 (농가 vs 전국)</h2>${ch.html}` : ""}
+<h2>최근 ${d.trend.years.length}년 전국 1:1 종합 비교표 (${d.trend.years[0]}~${d.trend.years.at(-1)}년) <span class="note">(${esc(gName)} 기준 · 연도별 각각 계산 · 전국 평균도 해당 연도)</span></h2>${trendTable(d.trend)}
+${ch.html ? `<h2>성적 변화 추이 (농가 vs 전국) <span class="note">(${esc(gName)} 기준)</span></h2>${ch.html}` : ""}
 <p class="note">대구축협 한우 스마트 컨설팅 · 전국 평균은 축평원/KOSIS 자료 기준</p>
 </div>${ch.script}</body></html>`;
 }
