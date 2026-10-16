@@ -14,7 +14,7 @@ h2 { font-size: calc(var(--fs, 14px) + 2px); margin: 16px 0 6px; border-left: 4p
 .meta { color: #4b5563; margin-bottom: 4px; }
 table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
 th, td { border: 1px solid #9ca3af; padding: calc(var(--fs, 14px) * 0.45) 6px; text-align: center; }
-th { background: #e5f2e8; }
+th { background: #d4ebd9 !important; color: #14532d; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 td.l { text-align: left; }
 .neg { color: #b91c1c; font-weight: 700; }
 .charts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
