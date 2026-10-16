@@ -15,20 +15,22 @@ h2 { font-size: calc(var(--fs, 14px) + 2px); margin: 16px 0 6px; border-left: 4p
 table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
 th, td { border: 1px solid #9ca3af; padding: calc(var(--fs, 14px) * 0.45) 6px; text-align: center; }
 th { background: #d4ebd9 !important; color: #14532d; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-td.l { text-align: left; }
+td.l { text-align: left; white-space: nowrap; }
 .neg { color: #b91c1c; font-weight: 700; }
-.charts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+.charts { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 8px; }
+.charts.two { grid-template-columns: repeat(2, 1fr); }
+.page2 { break-before: page; page-break-before: always; }
 .chart { border: 1px solid #d1d5db; border-radius: 6px; padding: 6px; break-inside: avoid; }
-.chart h3 { font-size: 12px; margin: 0 0 4px; text-align: center; color: #166534; }
-.chart div { position: relative; height: 170px; }
-.chart.main { grid-column: 1 / -1; border: 2px solid #166534; background: #f0f9f2; padding: 10px; }
+.chart h3 { font-size: 14px; margin: 0 0 4px; text-align: center; color: #166534; }
+.chart div { position: relative; height: 230px; }
+.chart.main { border: 2px solid #166534; background: #f0f9f2; padding: 10px; }
 .chart.main h3 { font-size: 18px; }
-.chart.main div { height: 250px; }
-@media (max-width: 640px) { .charts { grid-template-columns: 1fr; } }
+.chart.main div { height: 240px; }
+@media (max-width: 640px) { .charts.two { grid-template-columns: 1fr; } }
 .note { color: #6b7280; font-size: calc(var(--fs, 14px) - 2px); }
 .bar select { font-size: 14px; padding: 6px; }
 tr { break-inside: avoid; }
-@media print { .charts { grid-template-columns: repeat(3, 1fr); } .chart div { height: 160px; } .chart.main div { height: 230px; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .bar { display: none; } .sheet { padding: 0; max-width: none; } }
+@media print { th, td { padding: 2px 4px; } h2 { margin: 10px 0 4px; } .meta { margin-bottom: 2px; } .charts.two { grid-template-columns: repeat(2, 1fr); } .chart div { height: 250px !important; } .chart.main div { height: 230px !important; } .chart.main { padding: 6px; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .bar { display: none; } .sheet { padding: 0; max-width: none; } }
 `;
 
 function compareTable(rows) {
@@ -59,12 +61,17 @@ function chartsBlock(t) {
   if (!specs.length) return { html: "", script: "" };
   const data = specs.map((c) => ({ ...c, farm: t.series[c.key].farm, national: t.series[c.key].national }));
   const json = JSON.stringify({ labels: t.years.map((y) => `${y}년`), charts: data }).replace(/</g, "\\u003c");
-  const html = `<div class="charts" id="charts">${data.map((c, i) => `<div class="chart${c.main ? " main" : ""}"><h3>${esc(c.title)}</h3><div><canvas id="c${i}"></canvas></div></div>`).join("")}</div>`;
+  const card = (c, i) => `<div class="chart${c.main ? " main" : ""}"><h3>${esc(c.title)}</h3><div><canvas id="c${i}"></canvas></div></div>`;
+  const first = data.map((c, i) => [c, i]).filter(([c]) => c.main);
+  const rest = data.map((c, i) => [c, i]).filter(([c]) => !c.main);
+  // 1쪽: 근내지방도 한 개(전체 폭). 2쪽: 나머지를 한 줄에 2개씩.
+  const html = `<div class="charts">${first.map(([c, i]) => card(c, i)).join("")}</div>`
+    + (rest.length ? `<div class="page2"><h2>성적 변화 추이 (이어서)</h2><div class="charts two">${rest.map(([c, i]) => card(c, i)).join("")}</div></div>` : "");
   const script = `<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 (function () {
   var D = ${json};
-  if (typeof Chart === "undefined") { document.getElementById("charts").style.display = "none"; return; }
+  if (typeof Chart === "undefined") { Array.prototype.forEach.call(document.querySelectorAll(".charts"), function (e) { e.style.display = "none"; }); return; }
   var labelPlugin = { id: "vals", afterDatasetsDraw: function (ch) {
     var ctx = ch.ctx; ctx.save(); ctx.font = "bold 10px 'Malgun Gothic', sans-serif"; ctx.textAlign = "center";
     ch.data.datasets.forEach(function (ds, di) {
