@@ -20,12 +20,15 @@ td.l { text-align: left; }
 .charts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
 .chart { border: 1px solid #d1d5db; border-radius: 6px; padding: 6px; break-inside: avoid; }
 .chart h3 { font-size: 12px; margin: 0 0 4px; text-align: center; color: #166534; }
-.chart div { position: relative; height: 190px; }
+.chart div { position: relative; height: 170px; }
+.chart.main { grid-column: 1 / -1; border: 2px solid #166534; background: #f0f9f2; padding: 10px; }
+.chart.main h3 { font-size: 18px; }
+.chart.main div { height: 250px; }
 @media (max-width: 640px) { .charts { grid-template-columns: 1fr; } }
 .note { color: #6b7280; font-size: calc(var(--fs, 14px) - 2px); }
 .bar select { font-size: 14px; padding: 6px; }
 tr { break-inside: avoid; }
-@media print { .charts { grid-template-columns: repeat(3, 1fr); } .chart div { height: 180px; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .bar { display: none; } .sheet { padding: 0; max-width: none; } }
+@media print { .charts { grid-template-columns: repeat(3, 1fr); } .chart div { height: 160px; } .chart.main div { height: 230px; } * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .bar { display: none; } .sheet { padding: 0; max-width: none; } }
 `;
 
 function compareTable(rows) {
@@ -40,11 +43,15 @@ function trendTable(t) {
     `<tr>${r.map((v, i) => `<td class="${i < 2 ? "l" : ""}">${esc(v === null || v === undefined || v === "" ? "-" : v)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
 }
 
-// 추이 차트 3개: 도체중(꺾은선) · BMS(꺾은선) · 1+ 이상 출현율(막대). 값이 모두 없는 지표는 그리지 않는다.
+// 추이 차트 7개. 근내지방도(BMS)를 맨 위에 전체 폭으로 크게, 나머지 6개는 3열. 값이 모두 없는 지표는 그리지 않는다.
 const CHARTS = [
+  { key: "bms", title: "⭐ 근내지방도(BMS) 추이", type: "line", main: true },
   { key: "carcass_weight", title: "도체중 추이 (kg)", type: "line" },
-  { key: "bms", title: "근내지방도(BMS) 추이", type: "line" },
+  { key: "backfat", title: "등지방두께 추이 (mm)", type: "line" },
+  { key: "ribeye", title: "등심단면적 추이 (㎠)", type: "line" },
   { key: "q1plus", title: "1+등급 이상 출현율 (%)", type: "bar" },
+  { key: "c_grade", title: "C등급 출현율 (%)", type: "bar" },
+  { key: "month_age", title: "출하월령 추이 (개월)", type: "line" },
 ];
 
 function chartsBlock(t) {
@@ -52,7 +59,7 @@ function chartsBlock(t) {
   if (!specs.length) return { html: "", script: "" };
   const data = specs.map((c) => ({ ...c, farm: t.series[c.key].farm, national: t.series[c.key].national }));
   const json = JSON.stringify({ labels: t.years.map((y) => `${y}년`), charts: data }).replace(/</g, "\\u003c");
-  const html = `<div class="charts" id="charts">${data.map((c, i) => `<div class="chart"><h3>${esc(c.title)}</h3><div><canvas id="c${i}"></canvas></div></div>`).join("")}</div>`;
+  const html = `<div class="charts" id="charts">${data.map((c, i) => `<div class="chart${c.main ? " main" : ""}"><h3>${esc(c.title)}</h3><div><canvas id="c${i}"></canvas></div></div>`).join("")}</div>`;
   const script = `<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 (function () {
