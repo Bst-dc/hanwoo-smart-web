@@ -51,9 +51,9 @@ const CHARTS = [
   { key: "carcass_weight", title: "도체중 추이 (kg)", type: "line" },
   { key: "backfat", title: "등지방두께 추이 (mm)", type: "line" },
   { key: "ribeye", title: "등심단면적 추이 (㎠)", type: "line" },
-  { key: "q1plus", title: "1+등급 이상 출현율 (%)", type: "bar" },
-  { key: "c_grade", title: "C등급 출현율 (%)", type: "bar" },
   { key: "month_age", title: "출하월령 추이 (개월)", type: "line" },
+  { key: "c_grade", title: "C등급 출현율 (%)", type: "bar" },
+  { key: "q1plus", title: "1+등급 이상 출현율 (%)", type: "bar" },
 ];
 
 function chartsBlock(t) {
