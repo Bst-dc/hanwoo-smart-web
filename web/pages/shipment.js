@@ -43,6 +43,19 @@ function trendTable(t) {
   return table({ columns, rows }, { align: Object.fromEntries(columns.map((c, i) => [c, i < 2 ? "left" : "center"])) });
 }
 
+// 추이 차트 순서 (서버가 주는 항목 순서와 무관하게 이 순서로 모두 보여준다). 근내지방도(bms)가 가장 눈에 띄게 맨 위·크게.
+const TREND_ORDER = ["bms", "carcass_weight", "ribeye", "backfat", "q1plus", "c_grade", "month_age"];
+const trendOrder = (t) => TREND_ORDER.map((k) => t.metrics.find((m) => m.key === k)).filter(Boolean);
+
+function trendChartCard(m) {
+  const main = m.key === "bms";
+  const title = main ? "⭐ 근내지방도 (BMS)" : m.label;
+  return `<div class="rounded-2xl bg-white p-4 ${main ? "border-2 border-brand bg-brand-tint" : "border border-line"}">
+    <h4 class="${main ? "text-lg font-extrabold text-brand" : "text-sm font-semibold"} mb-2">${esc(title)}</h4>
+    <div class="relative" style="height:${main ? 320 : 200}px"><canvas id="sh-trend-${m.key}" role="img" aria-label="최근 연도별 ${esc(m.label)} 추이"></canvas></div>
+  </div>`;
+}
+
 function recordsTable(records, shown) {
   const columns = ["이력번호", "성별", "도축일자", "도체중 (kg)", "육질", "육량", "BMS", "등지방 (mm)", "단면적 (㎠)", "월령"];
   const rows = records.slice(0, shown).map((r) => [r.animal_no, r.gender, r.date, r.carcass_weight, r.grade_quality, r.grade_yield, r.bms, r.backfat, r.ribeye, r.month_age]);
@@ -91,11 +104,7 @@ export async function renderShipment(el, { farm, farms, onPickFarm, onSaved = as
       <div class="mt-3">${profitCard(d.profit, d.total_count)}</div>
 
       <h3 class="text-base font-bold mt-6 mb-2">📈 최근 ${d.trend.years.length}년 추이 <span class="text-sm font-normal text-muted">(${d.trend.years[0]}~${d.trend.years.at(-1)}년)</span></h3>
-      ${card(`
-        <label class="block text-sm text-muted mb-1" for="sh-metric">평가항목</label>
-        <select id="sh-metric" class="w-full rounded-xl border border-line bg-white px-3 py-2 mb-3">
-          ${d.trend.metrics.map((m) => `<option value="${m.key}">${esc(m.label)}</option>`).join("")}</select>
-        <div class="relative" style="height:240px"><canvas id="sh-trend" role="img" aria-label="최근 연도별 평가항목 추이"></canvas></div>`)}
+      <div class="space-y-3">${trendOrder(d.trend).map((m) => trendChartCard(m)).join("")}</div>
       <details class="mt-3 rounded-2xl bg-white border border-line p-4">
         <summary class="cursor-pointer font-semibold text-sm">🖨️ 최근 ${d.trend.years.length}년 전국 1:1 종합 비교표</summary>
         <div class="mt-3">${trendTable(d.trend)}</div>
@@ -141,20 +150,16 @@ export async function renderShipment(el, { farm, farms, onPickFarm, onSaved = as
   };
   drawRecords();
 
-  if (!d.has_data) keep("sh-trend", null);   // 성적이 없는 화면으로 바뀌면 이전 차트를 정리한다
+  if (!d.has_data) TREND_ORDER.forEach((k) => keep(`sh-trend-${k}`, null));   // 성적이 없는 화면으로 바뀌면 이전 차트를 정리한다
   else {
     const sheet = () => compareSheetHtml(d, { gName, yearCaption });
     el.querySelector("#sh-print").addEventListener("click", () => openCompareSheet(sheet()));
     el.querySelector("#sh-dl").addEventListener("click", () =>
       downloadCompareSheet(sheet(), `${d.farm.name}_전국비교표_${yearCaption.replace(/\s/g, "")}.html`));
-    const sel = el.querySelector("#sh-metric");
-    const draw = () => {
-      const s = d.trend.series[sel.value];
-      keep("sh-trend", lineChart(el.querySelector("#sh-trend"), {
-        labels: d.trend.years.map((y) => `${y}년`), farm: s.farm, national: s.national,
-        yTitle: d.trend.metrics.find((m) => m.key === sel.value).label }));
-    };
-    sel.addEventListener("change", draw);
-    draw();
+    trendOrder(d.trend).forEach((m) => {
+      const s = d.trend.series[m.key];
+      keep(`sh-trend-${m.key}`, lineChart(el.querySelector(`#sh-trend-${m.key}`), {
+        labels: d.trend.years.map((y) => `${y}년`), farm: s.farm, national: s.national, yTitle: m.label }));
+    });
   }
 }
