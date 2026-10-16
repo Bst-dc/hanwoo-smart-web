@@ -8,8 +8,8 @@
 
 **운영 중 배포 주소**: https://consulting.3-38-225-111.sslip.io/ — 모바일용 새 앱(FastAPI + HTML/JS, `api/`·`web/`)
 
-- 기존 Streamlit 앱(`streamlit_app.py`)은 되돌릴 때를 대비해 https://consulting-old.3-38-225-111.sslip.io/ 에 남겨 두었습니다 (2026-10-13 전환).
-- 두 앱은 같은 Supabase DB(`hanwoo` 스키마)를 씁니다. 주소 전환·되돌리기: `deploy/consulting-next/switch.sh` (`--rollback`).
+- 기존 Streamlit 앱은 2026-10-15에 내렸고 `consulting-old` 주소도 더 이상 쓰지 않습니다. 주소 전환용 `switch.sh` 도 할 일을 마쳐 삭제했습니다(2026-10-16).
+- 옛 앱으로 되돌려야 하면 git 태그 `legacy-streamlit` 에서 다시 띄워야 합니다(되돌리기 스크립트 없음).
 
 > **저장소 구성** — 이 코드 저장소는 공개이고, 조합원 개인정보가 든 DB 백업과 AI 리포트용 전문자료(knowledge/*.md)는
 > 비공개 데이터 저장소(`GITHUB_REPO` secret)에만 둡니다. 앱이 실행 중에 GitHub API로 읽고 씁니다.
