@@ -50,7 +50,7 @@
   - `consulting.` 주소 = 새 앱, 기존 앱은 `consulting-old.` 주소에 남겨 둠.
   - (되돌리기 스크립트 `switch.sh` 는 기존 앱을 내린 뒤 2026-10-16 삭제)
 - [x] **기존 앱(consulting-old) 끄기** (2026-10-15 컨테이너 내림, 2026-10-16 접속 안 됨 확인)
-- [ ] **옛 Streamlit Cloud 앱 삭제** — share.streamlit.io 에서 `hanwoo-smart-web` 앱 삭제 (시험농장 `testfarm` 앱은 지우지 말 것)
+- [x] **옛 Streamlit Cloud 앱 삭제** (2026-10-16, 시험농장 앱 포함 전부 삭제 — 두 앱 모두 AWS 주소로만 운영)
 
 ## 4. monday.com
 
