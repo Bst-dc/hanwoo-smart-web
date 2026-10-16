@@ -3,6 +3,7 @@
 import { api, card, esc, num, table } from "../api.js";
 import { keep, lineChart } from "../charts.js";
 import { renderInput } from "./shipment_input.js";
+import { compareSheetHtml, downloadCompareSheet, openCompareSheet } from "../print_compare.js";
 const GOOD = new Set(["우수 (▲)", "우수 (▼)", "적정", "단기출하 (우수)"]);
 const GENDER_NAME = { 거세: "거세우", 암: "암소" };
 const RECORD_PAGE = 50;
@@ -83,6 +84,10 @@ export async function renderShipment(el, { farm, farms, onPickFarm, onSaved = as
       <h3 class="text-base font-bold mt-5 mb-1">📊 전국 1:1 비교 <span class="text-sm font-normal text-muted">(${esc(gName)} 기준 · ${esc(yearCaption)} · 전국 ${d.national_year}년 평균)</span></h3>
       ${d.gender_forced ? `<p class="text-xs text-muted mb-2">※ 성별 '전체'여도 전국 비교는 성별이 섞이지 않게 ${esc(gName)} 출하분만으로 계산합니다. 아래 개체별 성적표에는 전체 개체가 나옵니다.</p>` : ""}
       ${card(comparisonList(d.comparison))}
+      <div class="grid grid-cols-2 gap-2 mt-3">
+        <button id="sh-print" class="rounded-xl border border-line bg-white px-3 py-2 min-h-[44px] text-sm font-semibold active:bg-panel">🖨️ 비교표 인쇄</button>
+        <button id="sh-dl" class="rounded-xl border border-line bg-white px-3 py-2 min-h-[44px] text-sm font-semibold active:bg-panel">⬇️ 비교표 내려받기</button>
+      </div>
       <div class="mt-3">${profitCard(d.profit, d.total_count)}</div>
 
       <h3 class="text-base font-bold mt-6 mb-2">📈 최근 ${d.trend.years.length}년 추이 <span class="text-sm font-normal text-muted">(${d.trend.years[0]}~${d.trend.years.at(-1)}년)</span></h3>
@@ -138,6 +143,10 @@ export async function renderShipment(el, { farm, farms, onPickFarm, onSaved = as
 
   if (!d.has_data) keep("sh-trend", null);   // 성적이 없는 화면으로 바뀌면 이전 차트를 정리한다
   else {
+    const sheet = () => compareSheetHtml(d, { gName, yearCaption });
+    el.querySelector("#sh-print").addEventListener("click", () => openCompareSheet(sheet()));
+    el.querySelector("#sh-dl").addEventListener("click", () =>
+      downloadCompareSheet(sheet(), `${d.farm.name}_전국비교표_${yearCaption.replace(/\s/g, "")}.html`));
     const sel = el.querySelector("#sh-metric");
     const draw = () => {
       const s = d.trend.series[sel.value];
