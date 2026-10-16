@@ -66,7 +66,7 @@ function chartsBlock(t) {
   const rest = data.map((c, i) => [c, i]).filter(([c]) => !c.main);
   // 1쪽: 근내지방도 한 개(전체 폭). 2쪽: 나머지를 한 줄에 2개씩.
   const html = `<div class="charts">${first.map(([c, i]) => card(c, i)).join("")}</div>`
-    + (rest.length ? `<div class="page2"><h2>성적 변화 추이 (이어서)</h2><div class="charts two">${rest.map(([c, i]) => card(c, i)).join("")}</div></div>` : "");
+    + (rest.length ? `<div class="page2"><div class="charts two">${rest.map(([c, i]) => card(c, i)).join("")}</div></div>` : "");
   const script = `<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 (function () {
