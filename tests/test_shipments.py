@@ -136,5 +136,42 @@ class ShipmentsTest(unittest.TestCase):
         self.assertIsNone(shipments.farm_info(self.conn, 99))
 
 
+class AlertTest(unittest.TestCase):
+    """분석앱 신호(shipment_alerts) 읽기 — 최신 연도 한 줄, 없거나 표가 없으면 None."""
+
+    def setUp(self):
+        self.conn = _conn()
+        self.conn.execute("""CREATE TABLE shipment_alerts (farm_code TEXT, year INT, n_head INT, bms_avg REAL, bms_nat REAL, bms_diff REAL,
+            bms_z_nat REAL, bms_tier INT, bms_prev_avg REAL, bms_change REAL, bms_drop INT, risk REAL, updated_at TEXT, PRIMARY KEY (farm_code, year))""")
+        self.conn.executemany("INSERT INTO shipment_alerts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+            ("A001", 2025, 8, 6.0, 6.3, -0.3, -0.5, 0, None, None, None, 0.2, "2026-01-01 09:00:00+00"),
+            ("A001", 2026, 21, 4.14, 6.5, -2.36, -6.1, 3, 4.75, -0.61, 0, 0.98, "2026-10-17 14:24:15.97+00"),
+            ("B002", 2026, 6, 5.5, 6.5, -1.0, -1.38, 2, None, None, None, 0.15, "2026-10-17 14:24:15.97+00"),
+        ])
+
+    def test_latest_year_row(self):
+        a = shipments.alert(self.conn, "A001")
+        self.assertEqual((a["year"], a["n_head"], a["bms"], a["national"], a["diff"]), (2026, 21, 4.14, 6.5, -2.36))
+        self.assertEqual((a["tier"], a["tier_label"], a["prev_bms"], a["change"], a["drop"], a["risk"]), (3, "아주 낮음", 4.75, -0.61, False, 0.98))
+        self.assertEqual(a["updated_at"], "2026-10-17 14:24")
+
+    def test_undecided_drop_stays_none(self):
+        a = shipments.alert(self.conn, "B002")
+        self.assertEqual((a["tier_label"], a["drop"], a["prev_bms"]), ("낮음", None, None))
+
+    def test_missing(self):
+        self.assertIsNone(shipments.alert(self.conn, "Z999"))
+        self.assertIsNone(shipments.alert(self.conn, ""))
+        self.assertIsNone(shipments.alert(self.conn, None))
+
+    def test_no_table_does_not_break(self):
+        with self.assertLogs("consulting.shipments", "WARNING"):
+            self.assertIsNone(shipments.alert(_conn(), "A001"))       # 로컬 SQLite 처럼 표가 없을 때
+
+    def test_postgres_timestamp_shown_in_kst(self):
+        from datetime import timezone
+        self.assertEqual(shipments._when(datetime(2026, 10, 17, 14, 24, 15, tzinfo=timezone.utc)), "2026-10-17 23:24")
+
+
 if __name__ == "__main__":
     unittest.main()

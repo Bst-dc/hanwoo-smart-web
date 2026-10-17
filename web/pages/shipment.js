@@ -49,6 +49,20 @@ function recordsTable(records, shown) {
   return table({ columns, rows }, { align: { 이력번호: "left", 성별: "center", 도축일자: "center", 육질: "center", 육량: "center" } });
 }
 
+// 출하성적 분석앱이 보내 준 근내지방도 신호 — 없으면(컨설팅 농가가 아니거나 올해 판정 두수 부족) 그리지 않는다.
+const fx = (v, d = 2) => (v === null || v === undefined ? "-" : Number(v).toFixed(d));
+function alertCard(a) {
+  if (!a) return "";
+  const tone = a.tier === 3 ? "bg-[#FBEDE8] text-neg" : a.tier > 0 ? "bg-[#FFF4E0] text-[#8A5A00]" : "bg-brand-tint text-pos";
+  const drop = a.drop === null ? "판정 불가 (직전 해 두수 부족)" : a.drop ? `<b class="text-neg">유의한 하락</b>` : "유의한 하락 없음";
+  const prev = a.prev_bms === null ? "" : `직전 해 ${fx(a.prev_bms)} → ${fx(a.bms)} (${a.change > 0 ? "+" : ""}${fx(a.change)}) · `;
+  return card(`<div class="flex items-center justify-between gap-2"><h3 class="font-bold">🥩 근내지방도 신호 <span class="text-sm font-normal text-muted">(${a.year}년)</span></h3>
+      <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${tone}">전국 대비 ${esc(a.tier_label)}</span></div>
+    <div class="kpi-value text-sm mt-2">농가 <b>${fx(a.bms)}</b> · 전국 ${fx(a.national, 1)} · 격차 <b class="${a.diff < 0 ? "text-neg" : "text-ink"}">${a.diff > 0 ? "+" : ""}${fx(a.diff)}</b> · ${num(a.n_head)}두</div>
+    <div class="text-sm text-muted mt-1">${prev}${drop} · 위험 지수 ${fx(a.risk)}</div>
+    <p class="text-xs text-muted mt-2">조합 출하성적 분석앱이 조합 전체 출하 자료(거세우)로 계산해 보낸 값입니다 (${esc(a.updated_at)} 갱신). 아래 1:1 비교와 자료 범위가 달라 숫자가 조금 다를 수 있습니다.</p>`);
+}
+
 function pickFarmCard(farms, onPickFarm) {
   return card(`<h2 class="text-lg font-bold mb-1">1단계 · 출하성적 비교분석</h2>
     <p class="text-sm text-muted mb-3">먼저 컨설팅할 농가를 고르세요. (위쪽 목록에서 골라도 됩니다)</p>
@@ -107,6 +121,7 @@ export async function renderShipment(el, { farm, farms, onPickFarm, onSaved = as
     <div class="rounded-2xl bg-brand-tint border border-brand-line p-3 text-sm">
       📌 <b>${esc(d.farm.name)}</b> <span class="text-muted">(조합원번호 ${esc(d.farm.code || "미등록")}, ${esc(d.farm.region || "지역 미입력")})</span>
     </div>
+    ${d.alert ? `<div class="mt-3">${alertCard(d.alert)}</div>` : ""}
     <details id="sh-input" class="mt-3 rounded-2xl bg-white border border-line p-4" ${(filters.inputOpen ?? farm.shipments === 0) ? "open" : ""}>
       <summary class="cursor-pointer font-semibold">➕ 출하성적 입력 <span class="text-sm font-normal text-muted">(축평원 이력번호 조회 · 엑셀 업로드)</span></summary>
       <div id="sh-input-box" class="mt-3"></div>

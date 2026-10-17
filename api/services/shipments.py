@@ -3,9 +3,13 @@
 농가 한 곳의 출하성적을 전국 평균과 1:1로 비교하고(진단 문구 포함), 최근 3년 추이, 수익성 추정, 개체별 성적표를 만든다.
 표에 보이는 숫자 글자는 기존 앱의 f1()과 똑같이 서버에서 만든다 (JS 와 Python 의 반올림이 달라지지 않게).
 """
+import logging
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from .. import national_stats
+
+log = logging.getLogger("consulting.shipments")
 
 # 농가 평균을 구하는 공식 (기존 앱 stats_row 의 SQL). 성별 조건은 호출 쪽에서 붙인다.
 STATS_SELECT = """
@@ -87,6 +91,41 @@ def farm_info(conn, farm_id: int):
     if r is None:
         return None
     return {"id": r["id"], "name": r["farm_name"], "code": r["farm_code"] or "", "region": r["region"] or ""}
+
+
+# 출하성적 분석앱(조합 전체 출하 자료)이 보내 주는 이상 농가 신호 — hanwoo.shipment_alerts, 농가·연도당 한 줄.
+# 이 앱은 읽기만 한다. 표는 이 앱의 DDL 이 아니라 분석앱 쪽 SQL(쓰기 전용 계정 analysis_writer)로 만들었다.
+ALERT_SELECT = """
+SELECT year, n_head, bms_avg, bms_nat, bms_diff, bms_tier, bms_prev_avg, bms_change, bms_drop, risk, updated_at
+FROM shipment_alerts WHERE farm_code = ? ORDER BY year DESC LIMIT 1
+"""
+TIER_LABEL = {3: "아주 낮음", 2: "낮음", 1: "다소 낮음", 0: "해당 없음"}
+KST = ZoneInfo("Asia/Seoul")
+
+
+def _when(v) -> str:
+    if isinstance(v, datetime):
+        return (v.astimezone(KST) if v.tzinfo else v).strftime("%Y-%m-%d %H:%M")
+    return str(v or "")[:16]
+
+
+def alert(conn, farm_code: str | None):
+    """분석앱 신호(가장 최근 연도 한 줄). 농가 코드가 없거나, 신호가 없거나, 표를 읽지 못하면(로컬 SQLite 등) None.
+    읽기 실패는 화면의 다른 부분을 막지 않도록 기록만 남긴다."""
+    if not farm_code:
+        return None
+    try:
+        r = conn.execute(ALERT_SELECT, (farm_code,)).fetchone()
+    except Exception as e:                       # noqa: BLE001 - 표가 없거나 권한이 없어도 출하성적 화면은 그대로
+        log.warning("분석앱 신호를 읽지 못했습니다 (%s)", type(e).__name__)
+        return None
+    if r is None:
+        return None
+    tier = int(r["bms_tier"]) if r["bms_tier"] is not None else None
+    return {"year": int(r["year"]), "n_head": r["n_head"], "bms": _num(r["bms_avg"]), "national": _num(r["bms_nat"]),
+            "diff": _num(r["bms_diff"]), "tier": tier, "tier_label": TIER_LABEL.get(tier, "판정 없음"),
+            "prev_bms": _num(r["bms_prev_avg"]), "change": _num(r["bms_change"]),
+            "drop": None if r["bms_drop"] is None else bool(r["bms_drop"]), "risk": _num(r["risk"]), "updated_at": _when(r["updated_at"])}
 
 
 def build(conn, farm_id: int, year: int | None, gender: str | None, now: datetime | None = None) -> dict:

@@ -14,4 +14,4 @@ def farm_shipments(farm_id: int, year: int | None = Query(None, ge=1990, le=2100
     farm = shipments.farm_info(conn, farm_id)
     if farm is None:
         raise HTTPException(status_code=404, detail="농가를 찾을 수 없습니다. 농가 목록을 새로 고쳐주세요.")
-    return {"farm": farm, **shipments.build(conn, farm_id, year, gender)}
+    return {"farm": farm, **shipments.build(conn, farm_id, year, gender), "alert": shipments.alert(conn, farm["code"])}
