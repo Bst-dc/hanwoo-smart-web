@@ -1,7 +1,8 @@
 // 2단계 · 현장방문조사 — 방문 목록, 조사표 새로 쓰기·고치기.
 // 양식(항목·선택지·기본값)은 서버(/api/surveys/form)가 기존 앱과 같게 준다. 여기서는 그리고 값을 모으기만 한다.
 // 선택 항목은 '선택 안 함(null)'으로 둘 수 있고, 그대로 저장하면 서버가 원래 값을 지킨다.
-import { api, card, esc, flash, num } from "../api.js";
+import { api, card, esc, flash, num, toast } from "../api.js";
+import { clearDraft, fmtTime, listDrafts, mergeValues, readDraft, writeDraft } from "../survey_draft.js";
 
 const st = { farmId: null, view: "list", visitId: null, values: null, meta: null, dirty: false, leaving: false, saving: false };
 let FORM = null;                                    // 양식은 한 번만 받는다
@@ -9,6 +10,27 @@ let FORM = null;                                    // 양식은 한 번만 받�
 const btn = "rounded-xl px-4 py-3 min-h-[48px] text-sm font-semibold disabled:opacity-50";
 const inputCls = "w-full rounded-xl border border-line bg-white px-3 py-2";
 const errBox = (m) => `<div class="rounded-xl border border-neg/40 bg-white p-3 mb-3 text-sm text-neg">⚠️ ${esc(m)}</div>`;
+
+// 임시 저장: 입력하면 0.5초 뒤 브라우저 저장소에 남긴다 (농가 전환·신호 끊김·폰이 탭을 정리해도 이어서 쓰기). 서버 저장 성공·'저장하지 않고 나가기' 때 지운다.
+const LS = (() => { try { return window.localStorage; } catch { return null; } })();
+let draftTimer = null;
+function flushDraft(form, farmId, visitId) {
+  clearTimeout(draftTimer);
+  if (!form?.isConnected || !st.values) return;      // 이미 다른 화면·다른 농가로 바뀌었으면 쓰지 않는다
+  readInputs(form);
+  writeDraft(LS, farmId, visitId, st.values);
+}
+function scheduleDraft(form) {
+  const farmId = st.farmId, visitId = st.meta?.id;    // 예약한 때의 농가·방문으로 쓴다
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(() => flushDraft(form, farmId, visitId), 500);
+}
+// 폰에서 다른 앱으로 넘어가면(브라우저가 탭을 정리할 수 있다) 기다리지 않고 바로 남긴다
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "hidden" || !st.dirty) return;
+  const f = document.getElementById("sv-form");
+  if (f) flushDraft(f, st.farmId, st.meta?.id);
+});
 
 function warnLeave(e) { if (st.dirty) { e.preventDefault(); e.returnValue = ""; } }
 function setDirty(v) {
@@ -72,11 +94,31 @@ function feedCards(m) {
 }
 
 // ---------------------------------------------------------------- 목록
+function draftCard(d) {
+  const drafts = listDrafts(LS, d.farm.id);
+  if (!drafts.length) return "";
+  const label = (x) => {
+    if (x.visitId === null) return "새 방문조사";
+    const v = d.visits.find((y) => y.id === x.visitId);
+    return v ? `${num(v.visit_number)}차 방문조사 고치기` : "지워진 방문의 조사표";
+  };
+  return `<div class="rounded-2xl border border-neg/40 bg-white p-3 mt-3 text-sm">
+    <p class="font-semibold">📝 저장하지 않은 조사표가 있습니다</p>
+    ${drafts.map((x) => `<div class="flex flex-wrap items-center justify-between gap-2 mt-2">
+      <span>${esc(label(x))} <span class="text-muted kpi-value">· ${fmtTime(x.at)} 임시 저장</span></span>
+      <span class="flex gap-2">
+        <button data-draft-resume="${x.visitId ?? "new"}" class="${btn} bg-brand text-white">이어서 쓰기</button>
+        <button data-draft-discard="${x.visitId ?? "new"}" class="${btn} border border-line bg-white">버리기</button></span></div>`).join("")}
+  </div>`;
+}
+
 function listView(d) {
   const next = d.visits.length ? Math.max(...d.visits.map((v) => v.visit_number)) + 1 : 1;
+  const hasNewDraft = !!readDraft(LS, d.farm.id, null);
   return `
     <div class="rounded-2xl bg-brand-tint border border-brand-line p-3 text-sm">📌 <b>${esc(d.farm.name)}</b> <span class="text-muted">(조합원번호 ${esc(d.farm.code || "미등록")}, ${esc(d.farm.region || "지역 미입력")})</span></div>
-    <button id="sv-new" class="${btn} w-full mt-3 bg-brand text-white">＋ 새 방문조사 작성 (${num(next)}차)</button>
+    ${draftCard(d)}
+    <button id="sv-new" class="${btn} w-full mt-3 bg-brand text-white">＋ 새 방문조사 작성 (${num(next)}차)${hasNewDraft ? " — 임시 저장본 이어서" : ""}</button>
     <details class="mt-3 rounded-2xl bg-white border border-line p-4">
       <summary class="cursor-pointer text-sm font-semibold">🖨️ 종이 조사표로 현장에서 적고 나중에 입력하기</summary>
       <p class="text-xs text-muted mt-2">A4 로 인쇄해 손으로 적은 뒤, 위 '새 방문조사 작성'에 같은 순서로 옮겨 입력하세요. ${esc(d.farm.name)} 농가의 이름·번호·지역은 미리 적혀 나옵니다.</p>
@@ -132,9 +174,10 @@ function readInputs(form) {
 
 function bindForm(el, farm, rerender) {
   const form = el.querySelector("#sv-form");
-  form.addEventListener("input", () => setDirty(true));
+  form.addEventListener("input", () => { setDirty(true); scheduleDraft(form); });
   form.addEventListener("change", (e) => {
     setDirty(true);
+    scheduleDraft(form);
     if (e.target.dataset.key === "region") {               // 지역을 바꾸면 그 지역 날씨로 채운다
       const wd = FORM.weather[e.target.value] || {};
       Object.entries(FORM.weather_fields).forEach(([k, wk]) => {
@@ -162,6 +205,7 @@ function bindForm(el, farm, rerender) {
       x.classList.toggle("bg-white", !on); x.classList.toggle("border-line", !on); x.classList.toggle("text-muted", !on);
     });
     setDirty(true);
+    scheduleDraft(form);
   }));
   el.querySelector("#sv-back").addEventListener("click", (e) => {
     if (st.dirty && !st.leaving) {                          // 확인 창은 쓰지 않고 버튼으로 한 번 더 묻는다
@@ -170,6 +214,8 @@ function bindForm(el, farm, rerender) {
       e.target.classList.add("text-neg", "border-neg");
       return;
     }
+    clearTimeout(draftTimer);
+    clearDraft(LS, st.farmId, st.meta?.id);               // '저장하지 않고 나가기'를 골랐으니 임시본도 버린다
     setDirty(false);
     Object.assign(st, { view: "list", visitId: null, values: null, meta: null });
     rerender();
@@ -182,11 +228,15 @@ function bindForm(el, farm, rerender) {
     const missing = FORM.sections.flatMap((s) => s.fields).find((f) => (f.kind === "int" || f.kind === "float" || f.kind === "date") && st.values[f.key] === "");
     if (missing) { flash(errBox(`'${missing.label}' 칸이 비어 있습니다. 값을 넣어주세요 (없으면 0).`)); window.scrollTo(0, 0); return; }
     const saveBtn = el.querySelector("#sv-save");
+    const draftIds = [st.farmId, st.meta?.id];
+    clearTimeout(draftTimer);
+    writeDraft(LS, ...draftIds, st.values);                // 저장이 실패(신호 끊김)해도 지금 값이 남게
     st.saving = true; saveBtn.disabled = true; saveBtn.textContent = "저장 중…";
     try {
       const r = st.meta
         ? await api(`/api/farms/${farm.id}/visits/${st.meta.id}`, { method: "PUT", body: JSON.stringify({ values: st.values }) })
         : await api(`/api/farms/${farm.id}/visits`, { method: "POST", body: JSON.stringify({ values: st.values }) });
+      clearDraft(LS, ...draftIds);                         // 서버에 들어갔으니 임시본은 지운다
       setDirty(false);
       const b = r.backup;
       flash(`<div class="rounded-xl border border-brand-line bg-brand-tint p-3 mb-3 text-sm">✅ <b>${esc(r.farm)}</b> 농가 ${num(r.visit_number)}차 방문조사를 ${st.meta ? "고쳐" : ""} 저장했습니다.
@@ -195,7 +245,8 @@ function bindForm(el, farm, rerender) {
       await rerender(true);
       window.scrollTo(0, 0);
     } catch (ex) {
-      flash(errBox(ex.message));
+      const why = ex instanceof TypeError ? "서버에 연결하지 못했습니다(신호 확인)" : ex.message;   // fetch 네트워크 실패는 브라우저 영어 문구라 바꿔 보인다
+      flash(errBox(`${why} — 입력한 내용은 이 폰에 임시 저장돼 있습니다. 신호가 잡히면 다시 저장하세요.`));
       window.scrollTo(0, 0);
     } finally {
       st.saving = false;
@@ -222,7 +273,15 @@ export async function renderSurvey(el, { farm, farms, onPickFarm, onSaved = asyn
     el.querySelectorAll(".pick").forEach((b) => b.addEventListener("click", () => onPickFarm(b.dataset.farm)));
     return;
   }
-  if (st.farmId !== farm.id) { setDirty(false); Object.assign(st, { farmId: farm.id, view: "list", visitId: null, values: null, meta: null }); }
+  if (st.farmId !== farm.id) {
+    const old = el.querySelector("#sv-form");
+    if (st.dirty && old) {                                 // 저장 안 한 조사표는 지우기 전에 임시본으로 — 그 농가로 돌아오면 '이어서 쓰기'
+      flushDraft(old, st.farmId, st.meta?.id);
+      toast("저장하지 않은 조사표를 임시 저장했습니다. 그 농가로 돌아가면 이어서 쓸 수 있습니다.");
+    }
+    setDirty(false);
+    Object.assign(st, { farmId: farm.id, view: "list", visitId: null, values: null, meta: null });
+  }
 
   const rerender = async (afterSave = false) => {
     if (afterSave) { await onSaved(); return; }               // 농가 목록(방문 수)까지 새로 받는다
@@ -246,7 +305,27 @@ export async function renderSurvey(el, { farm, farms, onPickFarm, onSaved = asyn
     await rerender();
     window.scrollTo(0, 0);
   };
-  el.querySelector("#sv-new").addEventListener("click", () => open(structuredClone(d.blank.values), null, false));
+  const resume = async (key) => {
+    try {
+      if (key === "new") {
+        const dr = readDraft(LS, farm.id, null);
+        await open(dr ? mergeValues(structuredClone(d.blank.values), dr.values) : structuredClone(d.blank.values), null, false);
+        if (dr) setDirty(true);
+        return;
+      }
+      const dr = readDraft(LS, farm.id, Number(key));
+      const v = await api(`/api/farms/${farm.id}/visits/${key}`);
+      await open(dr ? mergeValues(v.values, dr.values) : v.values, v.visit, v.extra_keys.length > 0);
+      if (dr) setDirty(true);
+    } catch (ex) { flash(errBox(ex.message)); }
+  };
+  el.querySelector("#sv-new").addEventListener("click", () => resume("new"));
+  el.querySelectorAll("[data-draft-resume]").forEach((b) => b.addEventListener("click", () => resume(b.dataset.draftResume)));
+  el.querySelectorAll("[data-draft-discard]").forEach((b) => b.addEventListener("click", async () => {
+    const k = b.dataset.draftDiscard;
+    clearDraft(LS, farm.id, k === "new" ? null : Number(k));
+    await rerender();
+  }));
   el.querySelectorAll(".open").forEach((b) => b.addEventListener("click", async () => {
     try {
       const v = await api(`/api/farms/${farm.id}/visits/${b.dataset.visit}`);
