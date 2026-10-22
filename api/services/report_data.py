@@ -10,6 +10,7 @@ import logging
 import time
 import urllib.request
 import xml.etree.ElementTree as ET
+from datetime import date
 
 import pandas as pd
 
@@ -18,7 +19,7 @@ from . import ekape
 
 log = logging.getLogger("consulting.report_data")
 
-YEARS = [2023, 2024, 2025, 2026]                       # 기존 앱 PRINT_REPORT_YEARS
+YEAR_SPAN = 4                                          # 올해 포함 최근 몇 개 연도를 리포트에 넣는가 (기존 앱 PRINT_REPORT_YEARS 는 2023~2026 고정이었다)
 GENDERS = [("거세", "거세우"), ("암", "암소")]
 EUMSEONG_PRICES_2025 = {"1++": 23038, "1+": 19590, "1": 18165, "2": 14969, "3": 12735, "등외": 10000}
 
@@ -81,12 +82,18 @@ def _r1(x):
     return None if x is None or pd.isna(x) else float(round(x, 1))
 
 
-def yearly_breakdown(conn, farm_id, gender, stats) -> list[dict]:
-    df = _frame(conn, """SELECT slaughter_year, carcass_weight, bms, backfat, ribeye, month_age, grade_quality, grade_yield
+def report_years(today: date | None = None) -> list[int]:
+    """리포트에 넣을 연도: 올해를 끝으로 최근 YEAR_SPAN 개 (오름차순). 성적이 없는 해는 yearly_breakdown 이 건너뛴다."""
+    end = (today or date.today()).year
+    return list(range(end - YEAR_SPAN + 1, end + 1))
+
+
+def yearly_breakdown(conn, farm_id, gender, stats, years=None) -> list[dict]:
+    df =_frame(conn, """SELECT slaughter_year, carcass_weight, bms, backfat, ribeye, month_age, grade_quality, grade_yield
                          FROM shipment_records WHERE farm_id = ? AND gender = ?""", (farm_id, gender))
     nat = stats.get(gender, {})
     out = []
-    for year in YEARS:
+    for year in (years or report_years()):
         y = df[df["slaughter_year"] == year]
         n = len(y)
         if n == 0:
@@ -185,7 +192,7 @@ def profit_estimate(conn, farm_id, gender, stats, prices=None) -> dict:
     return out
 
 
-def gender_data(conn, farm_id, stats, prices=None) -> dict:
+def gender_data(conn, farm_id, stats, prices=None, years=None) -> dict:
     out = {}
     for gkey, glabel in GENDERS:
         row = conn.execute(STATS_SQL, (farm_id, gkey)).fetchone()
@@ -198,7 +205,7 @@ def gender_data(conn, farm_id, stats, prices=None) -> dict:
         nat_w = stats.get(gkey, {}).get("도체중", {}).get(ny) if ny else None
         if s["avg_weight"] is not None and nat_w:
             profit["diff_weight_per_head_kg"] = round(s["avg_weight"] - nat_w, 1)
-        out[glabel] = {"shipment_stats": s, "yearly_breakdown": yearly_breakdown(conn, farm_id, gkey, stats), "profit_data": profit}
+        out[glabel] = {"shipment_stats": s, "yearly_breakdown": yearly_breakdown(conn, farm_id, gkey, stats, years), "profit_data": profit}
     return out
 
 

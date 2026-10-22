@@ -61,8 +61,20 @@ class DataTest(unittest.TestCase):
     def setUp(self):
         self.conn = memory_db()
 
+    def test_report_years_follow_the_calendar(self):
+        from datetime import date
+        self.assertEqual(report_data.report_years(date(2026, 10, 22)), [2023, 2024, 2025, 2026])
+        self.assertEqual(report_data.report_years(date(2027, 1, 5)), [2024, 2025, 2026, 2027])    # 해가 바뀌면 창이 따라 움직인다
+
+    def test_new_year_records_appear_and_empty_years_are_skipped(self):
+        self.conn.execute("""INSERT INTO shipment_records (farm_id, animal_no, gender, slaughter_year, carcass_weight, grade_quality,
+                             grade_yield, bms, backfat, ribeye, month_age) VALUES (1, 'n1', '거세', 2027, 510, '1++', 'A', 8, 12, 100, 30)""")
+        y = report_data.gender_data(self.conn, 1, STATS, prices={}, years=[2024, 2025, 2026, 2027])["거세우"]["yearly_breakdown"]
+        self.assertEqual([r["year"] for r in y], [2025, 2027])           # 기록 없는 2024·2026 은 건너뛴다
+        self.assertEqual(y[1]["carcass_weight_kg"]["전국"], None)         # 전국 통계에 없는 해는 None (지어내지 않음)
+
     def test_stats_and_yearly_breakdown(self):
-        g = report_data.gender_data(self.conn, 1, STATS, prices={})
+        g = report_data.gender_data(self.conn, 1, STATS, prices={}, years=[2023, 2024, 2025, 2026])
         self.assertEqual(list(g), ["거세우", "암소"])
         s = g["거세우"]["shipment_stats"]
         self.assertEqual((s["total_count"], s["avg_weight"], s["avg_bms"], s["rate_1plus_above"], s["rate_c_grade"]), (2, 470.0, 6.5, 50.0, 50.0))
