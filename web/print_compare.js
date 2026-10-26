@@ -21,9 +21,9 @@ td.l { text-align: left; white-space: nowrap; }
 .charts.two { grid-template-columns: repeat(2, 1fr); }
 .page2 { break-before: page; page-break-before: always; }
 .chart { border: 1px solid #d1d5db; border-radius: 6px; padding: 6px; break-inside: avoid; }
-.chart h3 { font-size: 14px; margin: 0 0 4px; text-align: center; color: #166534; }
+.chart h3 { font-size: 14px; margin: 0 0 4px; text-align: center; color: #1e3a8a; }
 .chart div { position: relative; height: 230px; }
-.chart.main { border: 2px solid #166534; background: #f0f9f2; padding: 10px; }
+.chart.main { border: 2px solid #1d4ed8; background: #eff6ff; padding: 10px; }
 .chart.main h3 { font-size: 18px; }
 .chart.main div { height: 240px; }
 @media (max-width: 640px) { .charts.two { grid-template-columns: 1fr; } }
@@ -72,13 +72,19 @@ function chartsBlock(t) {
 (function () {
   var D = ${json};
   if (typeof Chart === "undefined") { Array.prototype.forEach.call(document.querySelectorAll(".charts"), function (e) { e.style.display = "none"; }); return; }
+  var FARM = "#1D4ED8", NAT = "#EA580C";   // 농가=진한 파랑 실선, 전국=주황 점선 (흑백 인쇄에서도 선 모양으로 구분)
+  // 값 숫자: 두 값 중 큰 쪽은 점 위에, 작은 쪽은 점 아래에 적어 서로 겹치지 않게 한다. 막대는 항상 위.
   var labelPlugin = { id: "vals", afterDatasetsDraw: function (ch) {
-    var ctx = ch.ctx; ctx.save(); ctx.font = "bold 10px 'Malgun Gothic', sans-serif"; ctx.textAlign = "center";
+    var ctx = ch.ctx; ctx.save(); ctx.font = "bold 11px 'Malgun Gothic', sans-serif"; ctx.textAlign = "center";
+    var isBar = ch.config.type === "bar";
     ch.data.datasets.forEach(function (ds, di) {
+      var other = ch.data.datasets[1 - di];
       ctx.fillStyle = ds.borderColor;
       ch.getDatasetMeta(di).data.forEach(function (pt, i) {
         if (ds.data[i] == null) return;
-        ctx.textBaseline = "bottom"; ctx.fillText(Number(ds.data[i]).toFixed(1), pt.x, pt.y - 4);
+        var below = !isBar && other.data[i] != null && ds.data[i] < other.data[i];
+        ctx.textBaseline = below ? "top" : "bottom";
+        ctx.fillText(Number(ds.data[i]).toFixed(1), pt.x, below ? pt.y + 7 : pt.y - 7);
       });
     }); ctx.restore(); } };
   D.charts.forEach(function (c, i) {
@@ -86,11 +92,11 @@ function chartsBlock(t) {
     new Chart(document.getElementById("c" + i), {
       type: c.type, plugins: [labelPlugin],
       data: { labels: D.labels, datasets: [
-        { label: "농가", data: c.farm, borderColor: "#166534", backgroundColor: bar ? "#166534" : "#166534", borderWidth: 2.5, tension: 0.25, pointRadius: 4, pointBackgroundColor: "#166534" },
-        { label: "전국 평균", data: c.national, borderColor: "#475569", backgroundColor: bar ? "#cbd5e1" : "#475569", borderWidth: 2, borderDash: bar ? [] : [6, 4], tension: 0.25, pointRadius: 3, pointBackgroundColor: "#475569" } ] },
-      options: { responsive: true, maintainAspectRatio: false, animation: false, layout: { padding: { top: 14 } },
-        plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 10 } } }, tooltip: { enabled: true } },
-        scales: { x: { ticks: { font: { size: 10 } }, grid: { display: false } }, y: { ticks: { font: { size: 10 } }, grace: "12%" } } }
+        { label: "농가", data: c.farm, borderColor: FARM, backgroundColor: bar ? FARM : "rgba(29,78,216,0.10)", fill: !bar, borderWidth: bar ? 0 : 3.5, borderRadius: 4, tension: 0.25, pointRadius: 5.5, pointBackgroundColor: "#fff", pointBorderColor: FARM, pointBorderWidth: 3, order: 1 },
+        { label: "전국 평균", data: c.national, borderColor: NAT, backgroundColor: bar ? "#FDBA74" : NAT, borderWidth: bar ? 2 : 2.8, borderDash: bar ? [] : [7, 4], borderRadius: 4, tension: 0.25, pointRadius: 4.5, pointStyle: "rectRot", pointBackgroundColor: NAT, pointBorderColor: "#fff", pointBorderWidth: 1.5, order: 2 } ] },
+      options: { responsive: true, maintainAspectRatio: false, animation: false, layout: { padding: { top: 18, bottom: 6 } },
+        plugins: { legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 12, padding: 14, font: { size: 11, weight: "bold" } } }, tooltip: { enabled: true } },
+        scales: { x: { ticks: { font: { size: 11, weight: "bold" }, color: "#374151" }, grid: { display: false } }, y: { ticks: { font: { size: 10 }, color: "#4b5563" }, grid: { color: "#e5e7eb" }, grace: "15%" } } }
     });
   });
 })();
