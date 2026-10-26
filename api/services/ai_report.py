@@ -36,11 +36,16 @@ def api_key() -> str:
 
 
 # ---------------------------------------------------------------- 전문자료
-_kb = {"text": None}
+# 전문자료(knowledge/*.md)는 꼭 있어야 하고, 컨설턴트 노트(한우노트/ 옵시디언 보관함)는 있으면 덧붙인다.
+# 노트는 옵시디언에서 고치면 다음 리포트부터 반영되도록 KB_TTL 마다 다시 읽는다.
+NOTES_DIR = config.BASE_DIR / "한우노트"
+NOTES_SKIP_DIRS = {"템플릿", ".obsidian"}
+KB_TTL = 600
+_kb = {"text": None, "at": 0.0, "notes": {}}
 _kb_lock = threading.Lock()
 
 
-def _remote_knowledge() -> dict:
+def _github_fetch():
     token = config.secret("GITHUB_TOKEN")
     if not token:
         raise RuntimeError("GITHUB_TOKEN 없음")
@@ -48,10 +53,20 @@ def _remote_knowledge() -> dict:
     branch = config.secret("GITHUB_BRANCH", "main")
     headers = {"Authorization": f"Bearer {token}", "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "hanwoo-consulting-app"}
 
-    def get(path, accept):
+    def contents(path, accept):
         url = f"https://api.github.com/repos/{repo}/contents/{urllib.parse.quote(path)}?ref={urllib.parse.quote(branch)}"
         with urllib.request.urlopen(urllib.request.Request(url, headers={**headers, "Accept": accept}), timeout=20) as r:
             return r.read()
+
+    def tree():
+        url = f"https://api.github.com/repos/{repo}/git/trees/{urllib.parse.quote(branch)}?recursive=1"
+        with urllib.request.urlopen(urllib.request.Request(url, headers={**headers, "Accept": "application/vnd.github+json"}), timeout=20) as r:
+            return json.loads(r.read().decode("utf-8"))["tree"]
+    return contents, tree
+
+
+def _remote_knowledge() -> dict:
+    get, _ = _github_fetch()
     listing = json.loads(get("knowledge", "application/vnd.github+json").decode("utf-8"))
     names = [i["name"] for i in listing if i.get("type") == "file" and i["name"].endswith(".md")]
     if not names:
@@ -59,22 +74,54 @@ def _remote_knowledge() -> dict:
     return {n: get(f"knowledge/{n}", "application/vnd.github.raw").decode("utf-8") for n in names}
 
 
+def _is_note(rel: str) -> bool:
+    """보관함 안 상대경로(예: '성적해석/BMS 하락 원인.md')가 리포트 근거로 쓸 노트인가. 템플릿·시작하기 색인은 뺀다."""
+    parts = rel.split("/")
+    return rel.endswith(".md") and not (set(parts[:-1]) & NOTES_SKIP_DIRS) and not parts[-1].startswith("00_")
+
+
+def _local_notes() -> dict:
+    return {r: p.read_text(encoding="utf-8") for p in NOTES_DIR.rglob("*.md")
+            if _is_note(r := p.relative_to(NOTES_DIR).as_posix())}
+
+
+def _remote_notes() -> dict:
+    get, tree = _github_fetch()
+    rels = [i["path"][len(NOTES_DIR.name) + 1:] for i in tree() if i.get("type") == "blob" and i["path"].startswith(NOTES_DIR.name + "/")]
+    return {r: get(f"{NOTES_DIR.name}/{r}", "application/vnd.github.raw").decode("utf-8") for r in rels if _is_note(r)}
+
+
+def _notes_block(notes: dict) -> str:
+    if not notes:
+        return ""
+    body = "\n\n".join(f'<노트 제목="{r[:-3]}">\n{notes[r]}\n</노트>' for r in sorted(notes))
+    return ("[컨설턴트 현장 노트] 아래는 컨설턴트가 직접 정리한 노트로, 출처가 비어 있거나 초안일 수 있습니다. "
+            "위 전문자료와 내용이 다르면 전문자료를 따르고, 노트에서 가져온 내용은 '컨설턴트 노트'라고 밝히세요.\n\n" + body)
+
+
 def knowledge() -> str:
-    """전문자료 한 덩어리. 파일 이름 순서를 고정해야 프롬프트 캐시가 맞는다. 실패는 캐시하지 않고 '' 를 돌려준다."""
+    """전문자료 한 덩어리(+ 컨설턴트 노트). 파일 이름 순서를 고정해야 프롬프트 캐시가 맞는다.
+    전문자료를 못 받으면 '' (캐시 안 함). 다시 읽다 실패하면 지난번 내용을 그대로 쓴다. 노트만 못 받으면 노트 없이(또는 지난 노트로) 진행."""
     with _kb_lock:
-        if _kb["text"] is not None:
-            return _kb["text"]
+        stale = _kb["text"]
+        if stale is not None and time.time() - _kb["at"] < KB_TTL:
+            return stale
         try:
-            if KNOWLEDGE_DIR.is_dir():
-                files = {p.name: p.read_text(encoding="utf-8") for p in KNOWLEDGE_DIR.glob("*.md")}
-            else:
-                files = _remote_knowledge()
+            local = KNOWLEDGE_DIR.is_dir()
+            files = {p.name: p.read_text(encoding="utf-8") for p in KNOWLEDGE_DIR.glob("*.md")} if local else _remote_knowledge()
         except Exception as e:
             log.warning("전문자료를 받지 못함: %s", e)
-            return ""
-        _kb["text"] = "\n\n".join(f'<문서 제목="{n[:-3]}">\n{files[n]}\n</문서>' for n in sorted(files))
-        log.info("전문자료 %d개 (%d자)", len(files), len(_kb["text"]))
-        return _kb["text"]
+            return stale or ""
+        try:
+            notes = _local_notes() if NOTES_DIR.is_dir() else _remote_notes() if not local else {}
+        except Exception as e:
+            log.warning("컨설턴트 노트를 받지 못함(노트 없이 진행): %s", e)
+            notes = _kb["notes"]
+        text = "\n\n".join(f'<문서 제목="{n[:-3]}">\n{files[n]}\n</문서>' for n in sorted(files))
+        text = "\n\n".join(t for t in (text, _notes_block(notes)) if t)
+        _kb.update(text=text, at=time.time(), notes=notes)
+        log.info("전문자료 %d개 + 노트 %d개 (%d자)", len(files), len(notes), len(text))
+        return text
 
 
 # ---------------------------------------------------------------- 프롬프트

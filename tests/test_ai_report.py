@@ -122,6 +122,84 @@ class PromptTest(unittest.TestCase):
         self.assertIn("<table>", h)
 
 
+class NotesTest(unittest.TestCase):
+    """한우노트(옵시디언 보관함)를 리포트 근거에 덧붙이는 규칙 — 작은 보관함 하나로 검사."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        root = Path(self.tmp.name)
+        (root / "성적해석").mkdir()
+        (root / "템플릿").mkdir()
+        (root / ".obsidian").mkdir()
+        (root / "성적해석" / "BMS 하락 원인.md").write_text("# BMS\n비타민A", encoding="utf-8")
+        (root / "00_시작하기.md").write_text("색인", encoding="utf-8")
+        (root / "템플릿" / "노트템플릿.md").write_text("틀", encoding="utf-8")
+        (root / ".obsidian" / "x.md").write_text("설정", encoding="utf-8")
+        (root / "그림.png").write_bytes(b"\x89PNG")
+        self.root = root
+
+    def tearDown(self):
+        self.tmp.cleanup()
+        ai_report._kb.update(text=None, at=0.0, notes={})
+
+    def test_is_note_skips_template_index_obsidian_and_non_md(self):
+        self.assertTrue(ai_report._is_note("성적해석/BMS 하락 원인.md"))
+        self.assertFalse(ai_report._is_note("00_시작하기.md"))
+        self.assertFalse(ai_report._is_note("템플릿/노트템플릿.md"))
+        self.assertFalse(ai_report._is_note(".obsidian/x.md"))
+        self.assertFalse(ai_report._is_note("그림.png"))
+
+    def test_local_notes_reads_only_real_notes(self):
+        with mock.patch.object(ai_report, "NOTES_DIR", self.root):
+            self.assertEqual(ai_report._local_notes(), {"성적해석/BMS 하락 원인.md": "# BMS\n비타민A"})
+
+    def test_notes_block_labels_notes_and_is_empty_without_notes(self):
+        self.assertEqual(ai_report._notes_block({}), "")
+        b = ai_report._notes_block({"성적해석/BMS 하락 원인.md": "본문"})
+        self.assertIn("[컨설턴트 현장 노트]", b)
+        self.assertIn('<노트 제목="성적해석/BMS 하락 원인">\n본문\n</노트>', b)
+
+    def test_knowledge_appends_notes_after_documents(self):
+        kdir = self.root / "knowledge_only"
+        kdir.mkdir()
+        (kdir / "자료.md").write_text("전문", encoding="utf-8")
+        with mock.patch.object(ai_report, "KNOWLEDGE_DIR", kdir), mock.patch.object(ai_report, "NOTES_DIR", self.root):
+            text = ai_report.knowledge()
+        self.assertLess(text.index('<문서 제목="자료">'), text.index("[컨설턴트 현장 노트]"))
+        self.assertIn("비타민A", text)
+
+    def test_note_failure_does_not_break_report_and_reuses_last_notes(self):
+        def broken():
+            raise RuntimeError("네트워크")
+        with mock.patch.object(ai_report, "KNOWLEDGE_DIR", Path(self.tmp.name) / "none"), \
+             mock.patch.object(ai_report, "_remote_knowledge", lambda: {"자료.md": "전문"}), \
+             mock.patch.object(ai_report, "NOTES_DIR", Path(self.tmp.name) / "없는보관함"), \
+             mock.patch.object(ai_report, "_remote_notes", broken):
+            ai_report._kb["notes"] = {"a.md": "지난 노트"}
+            text = ai_report.knowledge()
+        self.assertIn("전문", text)
+        self.assertIn("지난 노트", text)
+
+    def test_cache_refreshes_after_ttl_and_keeps_stale_on_failure(self):
+        calls = []
+
+        def remote():
+            calls.append(1)
+            if len(calls) > 1:
+                raise RuntimeError("네트워크")
+            return {"자료.md": "전문"}
+        with mock.patch.object(ai_report, "KNOWLEDGE_DIR", Path(self.tmp.name) / "none"), \
+             mock.patch.object(ai_report, "_remote_knowledge", remote), \
+             mock.patch.object(ai_report, "NOTES_DIR", Path(self.tmp.name) / "없음"), \
+             mock.patch.object(ai_report, "_remote_notes", lambda: {}):
+            first = ai_report.knowledge()
+            self.assertEqual(ai_report.knowledge(), first)         # TTL 안: 다시 읽지 않음
+            self.assertEqual(len(calls), 1)
+            ai_report._kb["at"] -= ai_report.KB_TTL + 1
+            self.assertEqual(ai_report.knowledge(), first)         # TTL 지남: 다시 읽다 실패 → 지난 내용
+            self.assertEqual(len(calls), 2)
+
+
 def fake_stream(chunks, stop="end_turn", delay=0.0):
     def run(system, prompt, on_text, should_stop):
         for c in chunks:
