@@ -23,8 +23,8 @@ function makeButtons(d) {
     <button data-mode="${mode}" class="gen w-full text-left rounded-2xl border ${st.armed === mode ? "border-neg" : "border-line"} bg-white p-4 active:bg-panel disabled:opacity-50" ${disabled ? "disabled" : ""}>
       <div class="font-semibold">${icon} ${esc(title)}</div>
       <div class="text-xs text-muted mt-1">${esc(sub)}</div>
-      ${st.armed === mode ? `<div class="text-xs text-neg font-semibold mt-2">한 번 더 누르면 ${d.last_visit.visit_number}차 방문의 기존 [${mode}] 리포트를 새 리포트로 바꿉니다.</div>`
-        : has(mode) ? `<div class="text-xs text-muted mt-2">※ 이미 [${mode}] 리포트가 있습니다. 새로 만들면 바뀝니다.</div>` : ""}
+      ${st.armed === mode ? `<div class="text-xs text-neg font-semibold mt-2">한 번 더 누르면 ${d.last_visit.visit_number}차 방문의 기존 [${mode}] 리포트(직접 고친 내용 포함)를 새 리포트로 바꿉니다.</div>`
+        : has(mode) ? `<div class="text-xs text-muted mt-2">※ 이미 [${mode}] 리포트가 있습니다. 새로 만들면 바뀌고, 직접 고친 내용도 사라집니다.</div>` : ""}
     </button>`;
   return `<div class="grid gap-2 sm:grid-cols-2">
     ${one("전문", "📚", "전문자료 기반 리포트", "한우 컨설팅 길라잡이·자가TMR·육종가 자료를 근거로 처방합니다. 느리고 비용이 더 듭니다.", !d.knowledge)}
@@ -48,7 +48,8 @@ async function showReport(box, id) {
   box.innerHTML = `
     <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
       <div class="text-sm"><b>${esc(r.farm)}</b> ${num(r.visit_number)}차 · ${r.mode === "전문" ? "📚 전문" : "✨ 일반"} · <span class="text-muted">${kst(r.created_at)}</span></div>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
+        <button id="rp-edit" class="${btn} border border-brand text-brand bg-white">✏️ 고치기</button>
         <a class="${btn} border border-line bg-white" href="/api/reports/${r.id}/download?fmt=html">🌐 HTML 받기</a>
         <a class="${btn} border border-line bg-white" href="/api/reports/${r.id}/download?fmt=md">📄 MD 받기</a>
       </div>
@@ -56,6 +57,51 @@ async function showReport(box, id) {
     <article class="report rounded-2xl bg-white border border-line p-4">${r.html}</article>`;
   box.querySelectorAll(".report table").forEach((t) => {   // 넓은 표는 표만 옆으로 밀리게
     const w = document.createElement("div"); w.className = "table-wrap"; t.replaceWith(w); w.appendChild(t);
+  });
+  box.querySelector("#rp-edit").addEventListener("click", () => editReport(box, r));
+}
+
+// 마크다운 원문을 직접 고친다. 저장하면 같은 리포트 칸에 덮어쓴다 (다시 만들면 이 내용도 새 리포트로 바뀐다)
+async function editReport(box, r) {
+  box.innerHTML = '<p class="text-sm text-muted">원문을 불러오는 중…</p>';
+  let src;
+  try { src = (await api(`/api/reports/${r.id}/source`)).markdown; }
+  catch (e) { box.innerHTML = errBox(e.message); return; }
+  box.innerHTML = `
+    <div class="text-sm mb-2"><b>${esc(r.farm)}</b> ${num(r.visit_number)}차 · ${r.mode === "전문" ? "📚 전문" : "✨ 일반"} 리포트 고치는 중</div>
+    <p class="text-xs text-muted mb-2">마크다운 글입니다. <code>#</code> 제목, <code>**굵게**</code>, <code>-</code> 목록, <code>|</code> 표. 저장 전에는 다른 사람에게 보이지 않고, 저장하면 이전 글은 사라집니다.</p>
+    <textarea id="rp-text" class="w-full rounded-xl border border-line bg-white p-3 font-mono leading-relaxed" style="font-size:16px;min-height:60vh" spellcheck="false"></textarea>
+    <div id="rp-edit-msg" class="mt-2"></div>
+    <div class="flex gap-2 mt-2">
+      <button id="rp-save" class="${btn} flex-1 bg-brand text-white">💾 저장</button>
+      <button id="rp-cancel-edit" class="${btn} flex-1 border border-line bg-white">취소</button>
+    </div>`;
+  const ta = box.querySelector("#rp-text");
+  ta.value = src;
+  const dirty = () => ta.value !== src;
+  const guard = (e) => { if (dirty()) { e.preventDefault(); e.returnValue = ""; } };
+  window.addEventListener("beforeunload", guard);
+  const leave = () => window.removeEventListener("beforeunload", guard);
+  box.querySelector("#rp-cancel-edit").addEventListener("click", async () => {
+    if (dirty() && !confirm("고친 내용을 저장하지 않고 닫을까요?")) return;
+    leave(); await showReport(box, r.id);
+  });
+  box.querySelector("#rp-save").addEventListener("click", async (ev) => {
+    const msg = box.querySelector("#rp-edit-msg");
+    if (!dirty()) { msg.innerHTML = '<p class="text-sm text-muted">바뀐 내용이 없습니다.</p>'; return; }
+    ev.target.disabled = true; ev.target.textContent = "저장하는 중…";
+    try {
+      const res = await api(`/api/reports/${r.id}`, { method: "PUT", body: JSON.stringify({ markdown: ta.value }) });
+      leave();
+      const b = res.backup;
+      flash(`<div class="rounded-xl border border-brand-line bg-brand-tint p-3 mb-3 text-sm">✅ 고친 리포트를 저장했습니다 (${num(res.length)}자).
+        ${b ? `<div class="text-xs ${b.ok === false ? "text-neg" : "text-muted"} mt-1">${b.ok === true ? "☁️" : b.ok === false ? "⚠️" : "ℹ️"} ${esc(b.message)}</div>` : ""}</div>`);
+      await showReport(box, r.id);
+      window.scrollTo(0, 0);
+    } catch (e) {
+      msg.innerHTML = errBox(e.message);
+      ev.target.disabled = false; ev.target.textContent = "💾 저장";
+    }
   });
 }
 

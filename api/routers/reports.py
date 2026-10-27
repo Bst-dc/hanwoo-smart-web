@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel
 
+from .. import backup
 from ..auth import require_login
 from ..db import get_conn
 from ..services import ai_report, report_data, shipments
@@ -73,6 +74,30 @@ def report_read(report_id: int, conn=Depends(get_conn)):
     if r is None:
         raise HTTPException(status_code=404, detail="리포트를 찾을 수 없습니다.")
     return {**{k: v for k, v in r.items() if k != "markdown"}, "html": ai_report.to_html(r["markdown"]), "length": len(r["markdown"])}
+
+
+@router.get("/reports/{report_id}/source")
+def report_source(report_id: int, conn=Depends(get_conn)):
+    """고치기용 마크다운 원문."""
+    r = ai_report.get_report(conn, report_id)
+    if r is None:
+        raise HTTPException(status_code=404, detail="리포트를 찾을 수 없습니다.")
+    return {"id": r["id"], "markdown": r["markdown"]}
+
+
+class EditIn(BaseModel):
+    markdown: str
+
+
+@router.put("/reports/{report_id}")
+def report_edit(report_id: int, body: EditIn, conn=Depends(get_conn)):
+    try:
+        found = ai_report.update_text(conn, report_id, body.markdown)
+    except ReportError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from None
+    if not found:
+        raise HTTPException(status_code=404, detail="리포트를 찾을 수 없습니다. 목록을 새로 고쳐주세요.")
+    return {"id": report_id, "length": len(body.markdown), "backup": backup.run("AI 리포트 수정 저장")}
 
 
 @router.get("/reports/{report_id}/download")

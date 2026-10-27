@@ -375,6 +375,24 @@ class ReportApiTest(unittest.TestCase):
         self.assertEqual(self.client.post("/api/farms/1/reports", json={"mode": "일반"}).status_code, 503)
         self.assertEqual(self.client.get("/api/report-jobs/없음").status_code, 404)
 
+    def test_edit_saves_new_text_and_rejects_bad_input(self):
+        rid = self.client.get("/api/farms/1/reports").json()["reports"][0]["id"]
+        self.assertEqual(self.client.get(f"/api/reports/{rid}/source").json()["markdown"], "# 가농가 리포트")
+        r = self.client.put(f"/api/reports/{rid}", json={"markdown": "# 고친 리포트\n\n- 항목"})
+        self.assertEqual((r.status_code, r.json()["length"]), (200, len("# 고친 리포트\n\n- 항목")))
+        self.assertEqual(self.client.get(f"/api/reports/{rid}/download?fmt=md").text, "# 고친 리포트\n\n- 항목")
+        self.assertIn("<h1>고친 리포트</h1>", self.client.get(f"/api/reports/{rid}").json()["html"])
+        self.assertEqual(self.client.put(f"/api/reports/{rid}", json={"markdown": "  \n"}).status_code, 422)
+        self.assertEqual(self.client.put(f"/api/reports/{rid}", json={"markdown": "가" * (ai_report.MAX_EDIT_CHARS + 1)}).status_code, 422)
+        self.assertEqual(self.client.get(f"/api/reports/{rid}/download?fmt=md").text, "# 고친 리포트\n\n- 항목")   # 거절된 요청은 글을 건드리지 않음
+        self.assertEqual(self.client.put("/api/reports/9999", json={"markdown": "x"}).status_code, 404)
+        self.assertEqual(self.client.get("/api/reports/9999/source").status_code, 404)
+
+    def test_edit_html_tags_are_shown_as_text(self):
+        rid = self.client.get("/api/farms/1/reports").json()["reports"][0]["id"]
+        self.client.put(f"/api/reports/{rid}", json={"markdown": "<script>alert(1)</script>"})
+        self.assertNotIn("<script>", self.client.get(f"/api/reports/{rid}").json()["html"])
+
 
 if __name__ == "__main__":
     unittest.main()

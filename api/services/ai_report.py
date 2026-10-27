@@ -253,6 +253,24 @@ def save(conn, visit_id: int, mode: str, text: str) -> int:
     return conn.execute("SELECT id FROM ai_reports WHERE visit_id = ? AND report_mode = ?", (visit_id, mode)).fetchone()[0]
 
 
+MAX_EDIT_CHARS = 100_000
+
+
+def update_text(conn, report_id: int, text: str) -> bool:
+    """사람이 고친 리포트 글을 같은 칸에 덮어쓴다. 없는 리포트면 False."""
+    if not text.strip():
+        raise ReportError("리포트 내용이 비어 있습니다. 내용을 지우려면 저장하지 말고 취소하세요.")
+    if len(text) > MAX_EDIT_CHARS:
+        raise ReportError(f"리포트가 너무 깁니다 ({len(text):,}자). {MAX_EDIT_CHARS:,}자 이하로 줄여 주세요.")
+    try:
+        found = conn.execute("UPDATE ai_reports SET full_markdown = ? WHERE id = ?", (text, report_id)).rowcount
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    return bool(found)
+
+
 def list_reports(conn, farm_id: int) -> list[dict]:
     rows = conn.execute("""SELECT a.id, a.report_mode, a.created_at, LENGTH(a.full_markdown), v.visit_number, v.visit_date
                            FROM ai_reports a JOIN visits v ON v.id = a.visit_id WHERE v.farm_id = ?
