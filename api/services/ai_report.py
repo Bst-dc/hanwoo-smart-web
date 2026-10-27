@@ -42,8 +42,10 @@ NOTES_DIR = config.BASE_DIR / "한우노트"
 # 컨설팅실무/ 는 사람이 보고서 쓸 때 보는 서식·체크리스트라, 넣으면 리포트 7단 구성과 지시가 부딪친다.
 NOTES_SKIP_DIRS = {"템플릿", ".obsidian", "컨설팅실무"}
 KB_TTL = 600
+KB_RETRY = 60            # 다시 읽다 실패하면 이만큼(초) 지난 뒤에 다시 시도한다 (매 요청마다 GitHub 를 두드리지 않게)
 _kb = {"text": None, "notes_text": "", "at": 0.0, "notes": {}}
-_kb_lock = threading.Lock()
+_kb_lock = threading.Lock()          # _kb 를 읽고 쓰는 짧은 순간만 잡는다 (네트워크 호출 중에는 잡지 않는다)
+_kb_refresh_lock = threading.Lock()  # GitHub 에서 다시 읽는 일은 한 번에 하나만
 
 
 def _github_fetch():
@@ -95,35 +97,60 @@ def _remote_notes() -> dict:
 def _notes_block(notes: dict) -> str:
     if not notes:
         return ""
-    body = "\n\n".join(f'<노트 제목="{r[:-3]}">\n{notes[r]}\n</노트>' for r in sorted(notes))
+    def safe(t):  # 노트 본문이 </노트> 로 블록을 닫거나 새 <노트> 를 여는 일을 막는다
+        return t.replace("</노트>", "&lt;/노트>").replace("<노트 ", "&lt;노트 ")
+    body = "\n\n".join(f'<노트 제목="{safe(r[:-3])}">\n{safe(notes[r])}\n</노트>' for r in sorted(notes))
     return ("[컨설턴트 현장 노트] 아래는 컨설턴트가 직접 정리한 노트로, 출처가 비어 있거나 초안일 수 있습니다. "
             "위 전문자료와 내용이 다르면 전문자료를 따르고, 노트에서 가져온 내용은 '컨설턴트 노트'라고 밝히세요.\n\n" + body)
+
+
+def _kb_fresh():
+    """캐시가 아직 신선하면 (전문자료, 노트), 아니면 None."""
+    with _kb_lock:
+        if _kb["text"] is not None and time.time() - _kb["at"] < KB_TTL:
+            return _kb["text"], _kb["notes_text"]
+    return None
 
 
 def knowledge() -> tuple[str, str]:
     """(전문자료 덩어리, 컨설턴트 노트 덩어리). 둘은 따로 캐시 블록이 되어, 노트를 고쳐도 전문자료 캐시는 유지된다.
     파일 이름 순서를 고정해야 프롬프트 캐시가 맞는다.
-    전문자료를 못 받으면 첫 값이 '' (캐시 안 함). 다시 읽다 실패하면 지난번 내용을 그대로 쓴다. 노트만 못 받으면 노트 없이(또는 지난 노트로) 진행."""
+    다시 읽는 중에는 다른 요청이 기다리지 않고 지난 내용을 쓴다(지난 내용이 아예 없을 때만 기다린다).
+    전문자료를 못 받으면 첫 값이 '' (캐시 안 함). 다시 읽다 실패하면 KB_RETRY 초 동안 지난 내용을 그대로 쓴다. 노트만 못 받으면 노트 없이(또는 지난 노트로) 진행."""
+    fresh = _kb_fresh()
+    if fresh:
+        return fresh
     with _kb_lock:
-        stale = _kb["text"]
-        if stale is not None and time.time() - _kb["at"] < KB_TTL:
-            return stale, _kb["notes_text"]
+        stale, stale_notes = _kb["text"], _kb["notes_text"]
+    if not _kb_refresh_lock.acquire(blocking=stale is None):
+        return stale, stale_notes            # 다른 요청이 읽는 중 — 기다리지 않는다
+    try:
+        fresh = _kb_fresh()                  # 기다리는 사이 다른 요청이 이미 읽어 왔을 수 있다
+        if fresh:
+            return fresh
         try:
             local = KNOWLEDGE_DIR.is_dir()
             files = {p.name: p.read_text(encoding="utf-8") for p in KNOWLEDGE_DIR.glob("*.md")} if local else _remote_knowledge()
         except Exception as e:
             log.warning("전문자료를 받지 못함: %s", e)
-            return stale or "", _kb["notes_text"]
+            if stale is not None:
+                with _kb_lock:
+                    _kb["at"] = time.time() - KB_TTL + KB_RETRY
+            return stale or "", stale_notes
         try:
             notes = _local_notes() if NOTES_DIR.is_dir() else _remote_notes() if not local else {}
         except Exception as e:
             log.warning("컨설턴트 노트를 받지 못함(노트 없이 진행): %s", e)
-            notes = _kb["notes"]
+            with _kb_lock:
+                notes = _kb["notes"]
         text = "\n\n".join(f'<문서 제목="{n[:-3]}">\n{files[n]}\n</문서>' for n in sorted(files))
         notes_text = _notes_block(notes)
-        _kb.update(text=text, notes_text=notes_text, at=time.time(), notes=notes)
+        with _kb_lock:
+            _kb.update(text=text, notes_text=notes_text, at=time.time(), notes=notes)
         log.info("전문자료 %d개 (%d자) + 노트 %d개 (%d자)", len(files), len(text), len(notes), len(notes_text))
         return text, notes_text
+    finally:
+        _kb_refresh_lock.release()
 
 
 # ---------------------------------------------------------------- 프롬프트
