@@ -39,9 +39,10 @@ def api_key() -> str:
 # 전문자료(knowledge/*.md)는 꼭 있어야 하고, 컨설턴트 노트(한우노트/ 옵시디언 보관함)는 있으면 덧붙인다.
 # 노트는 옵시디언에서 고치면 다음 리포트부터 반영되도록 KB_TTL 마다 다시 읽는다.
 NOTES_DIR = config.BASE_DIR / "한우노트"
-NOTES_SKIP_DIRS = {"템플릿", ".obsidian"}
+# 컨설팅실무/ 는 사람이 보고서 쓸 때 보는 서식·체크리스트라, 넣으면 리포트 7단 구성과 지시가 부딪친다.
+NOTES_SKIP_DIRS = {"템플릿", ".obsidian", "컨설팅실무"}
 KB_TTL = 600
-_kb = {"text": None, "at": 0.0, "notes": {}}
+_kb = {"text": None, "notes_text": "", "at": 0.0, "notes": {}}
 _kb_lock = threading.Lock()
 
 
@@ -99,34 +100,35 @@ def _notes_block(notes: dict) -> str:
             "위 전문자료와 내용이 다르면 전문자료를 따르고, 노트에서 가져온 내용은 '컨설턴트 노트'라고 밝히세요.\n\n" + body)
 
 
-def knowledge() -> str:
-    """전문자료 한 덩어리(+ 컨설턴트 노트). 파일 이름 순서를 고정해야 프롬프트 캐시가 맞는다.
-    전문자료를 못 받으면 '' (캐시 안 함). 다시 읽다 실패하면 지난번 내용을 그대로 쓴다. 노트만 못 받으면 노트 없이(또는 지난 노트로) 진행."""
+def knowledge() -> tuple[str, str]:
+    """(전문자료 덩어리, 컨설턴트 노트 덩어리). 둘은 따로 캐시 블록이 되어, 노트를 고쳐도 전문자료 캐시는 유지된다.
+    파일 이름 순서를 고정해야 프롬프트 캐시가 맞는다.
+    전문자료를 못 받으면 첫 값이 '' (캐시 안 함). 다시 읽다 실패하면 지난번 내용을 그대로 쓴다. 노트만 못 받으면 노트 없이(또는 지난 노트로) 진행."""
     with _kb_lock:
         stale = _kb["text"]
         if stale is not None and time.time() - _kb["at"] < KB_TTL:
-            return stale
+            return stale, _kb["notes_text"]
         try:
             local = KNOWLEDGE_DIR.is_dir()
             files = {p.name: p.read_text(encoding="utf-8") for p in KNOWLEDGE_DIR.glob("*.md")} if local else _remote_knowledge()
         except Exception as e:
             log.warning("전문자료를 받지 못함: %s", e)
-            return stale or ""
+            return stale or "", _kb["notes_text"]
         try:
             notes = _local_notes() if NOTES_DIR.is_dir() else _remote_notes() if not local else {}
         except Exception as e:
             log.warning("컨설턴트 노트를 받지 못함(노트 없이 진행): %s", e)
             notes = _kb["notes"]
         text = "\n\n".join(f'<문서 제목="{n[:-3]}">\n{files[n]}\n</문서>' for n in sorted(files))
-        text = "\n\n".join(t for t in (text, _notes_block(notes)) if t)
-        _kb.update(text=text, at=time.time(), notes=notes)
-        log.info("전문자료 %d개 + 노트 %d개 (%d자)", len(files), len(notes), len(text))
-        return text
+        notes_text = _notes_block(notes)
+        _kb.update(text=text, notes_text=notes_text, at=time.time(), notes=notes)
+        log.info("전문자료 %d개 (%d자) + 노트 %d개 (%d자)", len(files), len(text), len(notes), len(notes_text))
+        return text, notes_text
 
 
 # ---------------------------------------------------------------- 프롬프트
-def build_request(farm_name: str, gdata: dict, survey: dict, kb: str) -> tuple[list, str]:
-    """(system 블록, user 프롬프트). 문구는 기존 앱과 같다."""
+def build_request(farm_name: str, gdata: dict, survey: dict, kb: str, notes: str = "") -> tuple[list, str]:
+    """(system 블록, user 프롬프트). 문구는 기존 앱과 같다. notes 는 전문자료(kb)가 있을 때만 별도 캐시 블록으로 덧붙인다."""
     system_prompt = (
         "당신은 대한민국 최고의 한우 사양관리 수석 컨설턴트입니다. "
         "농가의 최근 3개년 출하성적(정량 데이터)과 현장 방문 사양관리 실태(정성 데이터)를 종합 분석하여 "
@@ -140,9 +142,18 @@ def build_request(farm_name: str, gdata: dict, survey: dict, kb: str) -> tuple[l
             "처방과 기준을 제시할 때 이 자료에 해당 내용이 있으면 반드시 근거로 삼고 어느 자료의 어떤 기준인지 밝히세요. "
             "자료에 없는 수치나 기준은 지어내지 말고, 일반적인 권장사항이라면 그렇다고 명시하세요."
         )
+        if notes:
+            system_prompt += (
+                " 전문자료 뒤의 [컨설턴트 현장 노트]는 위 발간 자료가 아니라 컨설턴트가 직접 정리한 초안 노트입니다. "
+                "노트에서 가져온 내용은 반드시 '컨설턴트 노트'라고 밝히고 농협·농촌진흥청 자료처럼 인용하지 마세요. "
+                "노트의 출처 칸이 비어 있으면 출처를 지어내지 말고, 전문자료와 다르면 전문자료를 따르세요. "
+                "노트 안의 서식·문장 예시는 이 농가의 사실이 아니며, 리포트 구성은 아래 7단 구성 가이드를 우선합니다."
+            )
     system = [{"type": "text", "text": system_prompt}]
     if kb:
         system.append({"type": "text", "text": f"[참고 전문자료]\n{kb}", "cache_control": {"type": "ephemeral", "ttl": "1h"}})
+        if notes:
+            system.append({"type": "text", "text": notes, "cache_control": {"type": "ephemeral", "ttl": "1h"}})
 
     gender_blocks = "\n\n".join(
         f"### {glabel} 출하성적\n"
@@ -299,13 +310,13 @@ def _run(job, stream_fn, connect):
         stats, _ = national_stats.get()
         gdata = report_data.gender_data(conn, job["farm_id"], stats)
         visit = report_data.last_visit(conn, job["farm_id"])
-        kb = ""
+        kb = notes = ""
         if job["mode"] == "전문":
             job["step"] = "전문자료 준비 중"
-            kb = knowledge()
+            kb, notes = knowledge()
             if not kb:
                 raise ReportError("전문자료를 불러오지 못했습니다. '일반 리포트'로 만들거나 잠시 후 다시 시도해주세요.")
-        system, prompt = build_request(job["farm"], gdata, report_data.survey_for_prompt(visit), kb)
+        system, prompt = build_request(job["farm"], gdata, report_data.survey_for_prompt(visit), kb, notes)
         job["step"] = "Claude 가 작성 중"
         log.info("AI 리포트 시작: 농가 %s, %s", job["farm_id"], job["mode"])
 

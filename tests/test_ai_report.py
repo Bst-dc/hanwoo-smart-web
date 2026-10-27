@@ -112,9 +112,23 @@ class PromptTest(unittest.TestCase):
         sys_blocks, prompt = ai_report.build_request("가농가", {}, {}, "자료 본문")
         self.assertEqual(len(sys_blocks), 2)
         self.assertEqual(sys_blocks[1]["cache_control"], {"type": "ephemeral", "ttl": "1h"})
+        self.assertNotIn("컨설턴트 노트", sys_blocks[0]["text"])         # 노트가 없으면 노트 규칙도 없다
         self.assertIn("[농가명]: 가농가", prompt)
         self.assertIn("(이 농가는 등록된 출하성적이 없습니다)", prompt)
         self.assertEqual(len(ai_report.build_request("가농가", {}, {}, "")[0]), 1)
+
+    def test_notes_get_their_own_cache_block_and_a_rule_in_the_instructions(self):
+        sys_blocks, _ = ai_report.build_request("가농가", {}, {}, "자료 본문", "[컨설턴트 현장 노트] 노트 본문")
+        self.assertEqual(len(sys_blocks), 3)
+        self.assertEqual(sys_blocks[1]["text"], "[참고 전문자료]\n자료 본문")      # 노트가 바뀌어도 이 블록은 그대로
+        self.assertNotIn("노트", sys_blocks[1]["text"])
+        self.assertEqual(sys_blocks[2]["text"], "[컨설턴트 현장 노트] 노트 본문")
+        for b in sys_blocks[1:]:
+            self.assertEqual(b["cache_control"], {"type": "ephemeral", "ttl": "1h"})
+        self.assertIn("'컨설턴트 노트'라고 밝히고", sys_blocks[0]["text"])
+        self.assertIn("7단 구성", sys_blocks[0]["text"])
+        # 전문자료가 없으면 노트만 따로 들어가지 않는다 (일반 리포트)
+        self.assertEqual(len(ai_report.build_request("가농가", {}, {}, "", "노트")[0]), 1)
 
     def test_html_does_not_pass_tags_through(self):
         h = ai_report.to_html("# 제목\n\n<script>alert(1)</script>\n\n| a | b |\n|---|---|\n| 1 | 2 |")
@@ -140,10 +154,11 @@ class NotesTest(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
-        ai_report._kb.update(text=None, at=0.0, notes={})
+        ai_report._kb.update(text=None, notes_text="", at=0.0, notes={})
 
     def test_is_note_skips_template_index_obsidian_and_non_md(self):
         self.assertTrue(ai_report._is_note("성적해석/BMS 하락 원인.md"))
+        self.assertFalse(ai_report._is_note("컨설팅실무/개선안 문구와 우선순위.md"))
         self.assertFalse(ai_report._is_note("00_시작하기.md"))
         self.assertFalse(ai_report._is_note("템플릿/노트템플릿.md"))
         self.assertFalse(ai_report._is_note(".obsidian/x.md"))
@@ -159,14 +174,16 @@ class NotesTest(unittest.TestCase):
         self.assertIn("[컨설턴트 현장 노트]", b)
         self.assertIn('<노트 제목="성적해석/BMS 하락 원인">\n본문\n</노트>', b)
 
-    def test_knowledge_appends_notes_after_documents(self):
+    def test_knowledge_returns_documents_and_notes_separately(self):
         kdir = self.root / "knowledge_only"
         kdir.mkdir()
         (kdir / "자료.md").write_text("전문", encoding="utf-8")
         with mock.patch.object(ai_report, "KNOWLEDGE_DIR", kdir), mock.patch.object(ai_report, "NOTES_DIR", self.root):
-            text = ai_report.knowledge()
-        self.assertLess(text.index('<문서 제목="자료">'), text.index("[컨설턴트 현장 노트]"))
-        self.assertIn("비타민A", text)
+            docs, notes = ai_report.knowledge()
+        self.assertIn('<문서 제목="자료">', docs)
+        self.assertNotIn("비타민A", docs)                          # 노트는 전문자료 덩어리에 섞이지 않는다
+        self.assertIn("[컨설턴트 현장 노트]", notes)
+        self.assertIn("비타민A", notes)
 
     def test_note_failure_does_not_break_report_and_reuses_last_notes(self):
         def broken():
@@ -176,9 +193,9 @@ class NotesTest(unittest.TestCase):
              mock.patch.object(ai_report, "NOTES_DIR", Path(self.tmp.name) / "없는보관함"), \
              mock.patch.object(ai_report, "_remote_notes", broken):
             ai_report._kb["notes"] = {"a.md": "지난 노트"}
-            text = ai_report.knowledge()
-        self.assertIn("전문", text)
-        self.assertIn("지난 노트", text)
+            docs, notes = ai_report.knowledge()
+        self.assertIn("전문", docs)
+        self.assertIn("지난 노트", notes)
 
     def test_cache_refreshes_after_ttl_and_keeps_stale_on_failure(self):
         calls = []
@@ -237,7 +254,7 @@ class JobTest(unittest.TestCase):
         self.assertEqual(self.reports(), [(8, "일반", "# 리포트 본문")])
         self.assertEqual(j["backup"]["ok"], None)
         self.run_job(fake_stream(["새 일반"]))                               # 같은 방식은 덮어쓴다
-        with mock.patch.object(ai_report, "knowledge", lambda: "자료"):
+        with mock.patch.object(ai_report, "knowledge", lambda: ("자료", "")):
             self.run_job(fake_stream(["전문 본문"]), mode="전문")
         self.assertEqual(self.reports(), [(8, "일반", "새 일반"), (8, "전문", "전문 본문")])
         self.assertEqual([r["mode"] for r in ai_report.list_reports(self.conn, 1)], ["일반", "전문"])
@@ -254,7 +271,7 @@ class JobTest(unittest.TestCase):
 
     def test_expert_mode_without_knowledge_fails_before_calling_claude(self):
         called = []
-        with mock.patch.object(ai_report, "knowledge", lambda: ""):
+        with mock.patch.object(ai_report, "knowledge", lambda: ("", "")):
             j = self.run_job(lambda *a: called.append(1) or "end_turn", mode="전문")
         self.assertEqual((j["status"], called), ("error", []))
 
