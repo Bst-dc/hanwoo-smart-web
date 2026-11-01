@@ -62,9 +62,14 @@ function noChartLib(canvas) {
   return null;
 }
 
+// 같은 캔버스에 이미 차트가 있으면 먼저 지운다. Chart.js 4 는 쓰고 있는 캔버스에 새 차트를 만들면
+// 오류를 내고 이전 차트를 그대로 둔다 — keep(name, lineChart(...)) 은 새 차트를 만든 뒤에야 이전 것을 지우므로 여기서 막는다.
+function freeCanvas(canvas) { Chart.getChart(canvas)?.destroy(); }
+
 // 농가(굵은 선 + 옅은 띠) vs 전국 평균(가는 연한 선) 꺾은선. 차트 객체를 돌려준다 (다시 그릴 때 destroy 해야 한다).
 export function lineChart(canvas, { labels, farm, national, yTitle, farmLabel = "농가 평균" }) {
   if (!window.Chart) return noChartLib(canvas);
+  freeCanvas(canvas);
   const last = lastIndex(farm);
   const curve = { cubicInterpolationMode: "monotone", spanGaps: true, borderCapStyle: "round", borderJoinStyle: "round" };   // 값 사이를 부드럽게, 값보다 튀어 나가지 않게
   return new Chart(canvas, {
@@ -97,6 +102,7 @@ export function lineChart(canvas, { labels, farm, national, yTitle, farmLabel = 
 // 항목별 막대 (막대 위에 값). colors 는 막대마다. 축·눈금선 없이 막대와 값만 (피그마 Contributions 카드).
 export function barChart(canvas, { labels, values, colors, valueLabel }) {
   if (!window.Chart) return noChartLib(canvas);
+  freeCanvas(canvas);
   return new Chart(canvas, {
     type: "bar",
     data: { labels, datasets: [{ data: values, backgroundColor: colors, borderRadius: 8, borderSkipped: false, barPercentage: 0.7, categoryPercentage: 0.9, maxBarThickness: 64 }] },
