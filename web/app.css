@@ -1,8 +1,15 @@
 /* Tailwind 로 표현하기 번거로운 것만 둔다. */
+
+/* 앱 색 — 스마트컨설팅 노랑 (11-01, 포털 상자 색과 같게: 시험농장 파랑·스마트컨설팅 노랑·출하분석 빨강·시세전망 초록).
+   머리글 윗줄·앱 글자 표시·다른 시스템 메뉴의 '지금 여기'·고른 탭 밑줄에만 쓴다. 단추·데이터 색은 그대로. */
+:root { --app: #F2B705; --app-on: #161A19; --app-text: #8A6300; --app-tint: #FEF6DA; }
+.app-bar { border-top: 3px solid var(--app); }
+.app-mark { background: var(--app); color: var(--app-on); }
+.app-current { background: var(--app-tint); color: var(--app-text); }
 .kpi-value { font-variant-numeric: tabular-nums; }
 
-/* 메뉴 탭: 글자 + 고른 탭만 진한 글자와 장부 녹색 밑줄 (시험농장 DESIGN.md 7절) */
-.tab[aria-selected="true"] { border-bottom-color: #1F6B5E; color: #161A19; font-weight: 600; }
+/* 메뉴 탭: 글자 + 고른 탭만 진한 글자와 앱 색(노랑) 밑줄 (시험농장 DESIGN.md 7절, 11-01 장부 녹색→앱 색) */
+.tab[aria-selected="true"] { border-bottom-color: var(--app); color: #161A19; font-weight: 600; }
 
 /* 모든 버튼 공통: 올리면 살짝 어두워지고(마우스만), 누르면 1px 눌림 */
 button { transition: background-color .15s, filter .15s, transform .05s; }
