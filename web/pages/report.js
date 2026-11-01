@@ -4,7 +4,7 @@ import { api, card, esc, flash, num } from "../api.js";
 
 const POLL_MS = 2500;
 const btn = "rounded-xl px-4 py-3 min-h-[48px] text-sm font-semibold disabled:opacity-50";
-const errBox = (m) => `<div class="rounded-xl border border-neg/40 bg-white p-3 mb-3 text-sm text-neg">⚠️ ${esc(m)}</div>`;
+const errBox = (m) => `<div class="rounded-xl border border-neg/40 bg-white p-3 mb-3 text-sm text-neg">${esc(m)}</div>`;
 const st = { farmId: null, openId: null, armed: null, pollTimer: null };
 
 // DB 시각은 UTC 'YYYY-MM-DD HH:MM:SS' → 한국 시각으로 보여 준다
@@ -19,25 +19,25 @@ function stopPolling() { clearTimeout(st.pollTimer); st.pollTimer = null; }
 function makeButtons(d) {
   if (!d.api_key) return card('<p class="text-sm text-neg">서버에 Anthropic API 키가 없어 리포트를 만들 수 없습니다. 관리자에게 설정을 요청하세요.</p>');
   const has = (m) => d.last_visit && d.reports.some((r) => r.mode === m && r.visit_number === d.last_visit.visit_number);
-  const one = (mode, icon, title, sub, disabled) => `
+  const one = (mode, title, sub, disabled) => `
     <button data-mode="${mode}" class="gen w-full text-left rounded-2xl border ${st.armed === mode ? "border-neg" : "border-line"} bg-white p-4 active:bg-panel disabled:opacity-50" ${disabled ? "disabled" : ""}>
-      <div class="font-semibold">${icon} ${esc(title)}</div>
+      <div class="font-semibold">${esc(title)}</div>
       <div class="text-xs text-muted mt-1">${esc(sub)}</div>
       ${st.armed === mode ? `<div class="text-xs text-neg font-semibold mt-2">한 번 더 누르면 ${d.last_visit.visit_number}차 방문의 기존 [${mode}] 리포트(직접 고친 내용 포함)를 새 리포트로 바꿉니다.</div>`
         : has(mode) ? `<div class="text-xs text-muted mt-2">※ 이미 [${mode}] 리포트가 있습니다. 새로 만들면 바뀌고, 직접 고친 내용도 사라집니다.</div>` : ""}
     </button>`;
   return `<div class="grid gap-2 sm:grid-cols-2">
-    ${one("전문", "📚", "전문자료 기반 리포트", "한우 컨설팅 길라잡이·자가TMR·육종가 자료를 근거로 처방합니다. 느리고 비용이 더 듭니다.", !d.knowledge)}
-    ${one("일반", "✨", "일반 리포트 (빠름)", "Claude 의 일반 지식만으로 작성합니다. 빠르고 저렴하지만 자료 인용은 없습니다.", false)}
+    ${one("전문", "전문자료 기반 리포트", "한우 컨설팅 길라잡이·자가TMR·육종가 자료를 근거로 처방합니다. 느리고 비용이 더 듭니다.", !d.knowledge)}
+    ${one("일반", "일반 리포트 (빠름)", "Claude 의 일반 지식만으로 작성합니다. 빠르고 저렴하지만 자료 인용은 없습니다.", false)}
   </div>
-  <p class="text-xs text-muted mt-2">엔진: ${esc(d.model)} · ${d.knowledge ? "📚 전문자료 사용 가능" : "⚠️ 전문자료를 쓸 수 없음"} · 몇 분 걸릴 수 있습니다. 화면을 꺼도 서버에서 계속 만듭니다.</p>`;
+  <p class="text-xs text-muted mt-2">엔진: ${esc(d.model)} · ${d.knowledge ? "전문자료 사용 가능" : "전문자료를 쓸 수 없음"} · 몇 분 걸릴 수 있습니다. 화면을 꺼도 서버에서 계속 만듭니다.</p>`;
 }
 
 function reportList(d) {
   if (!d.reports.length) return card('<p class="text-sm text-muted">저장된 리포트가 없습니다.</p>');
   return `<div class="space-y-2">${d.reports.map((r) => `
     <button data-report="${r.id}" class="openrep w-full text-left rounded-2xl bg-white border ${st.openId === r.id ? "border-brand" : "border-line"} p-4 active:bg-panel">
-      <div class="flex items-center justify-between gap-2"><span class="font-semibold">${num(r.visit_number)}차 방문 · ${r.mode === "전문" ? "📚 전문" : "✨ 일반"}</span><span class="text-xs text-muted">${num(r.length)}자</span></div>
+      <div class="flex items-center justify-between gap-2"><span class="font-semibold">${num(r.visit_number)}차 방문 · ${r.mode === "전문" ? "전문" : "일반"}</span><span class="text-xs text-muted">${num(r.length)}자</span></div>
       <div class="text-sm text-muted mt-1">${kst(r.created_at)} 만듦 · 눌러서 보기</div>
     </button>`).join("")}</div>`;
 }
@@ -47,11 +47,11 @@ async function showReport(box, id) {
   const r = await api(`/api/reports/${id}`);
   box.innerHTML = `
     <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-      <div class="text-sm"><b>${esc(r.farm)}</b> ${num(r.visit_number)}차 · ${r.mode === "전문" ? "📚 전문" : "✨ 일반"} · <span class="text-muted">${kst(r.created_at)}</span></div>
+      <div class="text-sm"><b>${esc(r.farm)}</b> ${num(r.visit_number)}차 · ${r.mode === "전문" ? "전문" : "일반"} · <span class="text-muted">${kst(r.created_at)}</span></div>
       <div class="flex flex-wrap gap-2">
-        <button id="rp-edit" class="${btn} border border-brand text-brand bg-white">✏️ 고치기</button>
-        <a class="${btn} border border-line bg-white" href="/api/reports/${r.id}/download?fmt=html">🌐 HTML 받기</a>
-        <a class="${btn} border border-line bg-white" href="/api/reports/${r.id}/download?fmt=md">📄 MD 받기</a>
+        <button id="rp-edit" class="${btn} border border-brand text-brand bg-white">고치기</button>
+        <a class="${btn} border border-line bg-white" href="/api/reports/${r.id}/download?fmt=html">HTML 받기</a>
+        <a class="${btn} border border-line bg-white" href="/api/reports/${r.id}/download?fmt=md">MD 받기</a>
       </div>
     </div>
     <article class="report rounded-2xl bg-white border border-line p-4">${r.html}</article>`;
@@ -68,12 +68,12 @@ async function editReport(box, r) {
   try { src = (await api(`/api/reports/${r.id}/source`)).markdown; }
   catch (e) { box.innerHTML = errBox(e.message); return; }
   box.innerHTML = `
-    <div class="text-sm mb-2"><b>${esc(r.farm)}</b> ${num(r.visit_number)}차 · ${r.mode === "전문" ? "📚 전문" : "✨ 일반"} 리포트 고치는 중</div>
+    <div class="text-sm mb-2"><b>${esc(r.farm)}</b> ${num(r.visit_number)}차 · ${r.mode === "전문" ? "전문" : "일반"} 리포트 고치는 중</div>
     <p class="text-xs text-muted mb-2">마크다운 글입니다. <code>#</code> 제목, <code>**굵게**</code>, <code>-</code> 목록, <code>|</code> 표. 저장 전에는 다른 사람에게 보이지 않고, 저장하면 이전 글은 사라집니다.</p>
     <textarea id="rp-text" class="w-full rounded-xl border border-line bg-white p-3 font-mono leading-relaxed" style="font-size:16px;min-height:60vh" spellcheck="false"></textarea>
     <div id="rp-edit-msg" class="mt-2"></div>
     <div class="flex gap-2 mt-2">
-      <button id="rp-save" class="${btn} flex-1 bg-brand text-white">💾 저장</button>
+      <button id="rp-save" class="${btn} flex-1 bg-brand text-white">저장</button>
       <button id="rp-cancel-edit" class="${btn} flex-1 border border-line bg-white">취소</button>
     </div>`;
   const ta = box.querySelector("#rp-text");
@@ -94,13 +94,13 @@ async function editReport(box, r) {
       const res = await api(`/api/reports/${r.id}`, { method: "PUT", body: JSON.stringify({ markdown: ta.value }) });
       leave();
       const b = res.backup;
-      flash(`<div class="rounded-xl border border-brand-line bg-brand-tint p-3 mb-3 text-sm">✅ 고친 리포트를 저장했습니다 (${num(res.length)}자).
-        ${b ? `<div class="text-xs ${b.ok === false ? "text-neg" : "text-muted"} mt-1">${b.ok === true ? "☁️" : b.ok === false ? "⚠️" : "ℹ️"} ${esc(b.message)}</div>` : ""}</div>`);
+      flash(`<div class="rounded-xl border border-brand-line bg-brand-tint p-3 mb-3 text-sm">고친 리포트를 저장했습니다 (${num(res.length)}자).
+        ${b ? `<div class="text-xs ${b.ok === false ? "text-neg" : "text-muted"} mt-1">${esc(b.message)}</div>` : ""}</div>`);
       await showReport(box, r.id);
       window.scrollTo(0, 0);
     } catch (e) {
       msg.innerHTML = errBox(e.message);
-      ev.target.disabled = false; ev.target.textContent = "💾 저장";
+      ev.target.disabled = false; ev.target.textContent = "저장";
     }
   });
 }
@@ -109,12 +109,12 @@ function jobCard(j) {
   const running = j.status === "running";
   return card(`
     <div class="flex items-center justify-between gap-2">
-      <div class="font-semibold">${running ? "⏳" : j.status === "done" ? "✅" : j.status === "cancelled" ? "⏹️" : "⚠️"} ${esc(j.farm)} · ${j.mode === "전문" ? "📚 전문" : "✨ 일반"} 리포트</div>
+      <div class="font-semibold">${running ? "만드는 중" : j.status === "done" ? "완료" : j.status === "cancelled" ? "취소됨" : "오류"} · ${esc(j.farm)} · ${j.mode === "전문" ? "전문" : "일반"} 리포트</div>
       <span class="text-xs text-muted kpi-value">${mmss(j.elapsed)} · ${num(j.length)}자</span>
     </div>
     <p class="text-sm mt-1 ${j.status === "error" ? "text-neg" : "text-muted"}">${esc(j.error || j.step)}</p>
     <div id="rp-live" class="mt-3 max-h-80 overflow-y-auto whitespace-pre-wrap text-sm rounded-xl bg-panel p-3 ${j.length ? "" : "hidden"}"></div>
-    ${running ? `<button id="rp-cancel" class="${btn} w-full mt-3 border border-neg text-neg bg-white">⏹️ 만들기 취소 (저장 안 함)</button>` : ""}`, "border-brand");
+    ${running ? `<button id="rp-cancel" class="${btn} w-full mt-3 border border-neg text-neg bg-white">만들기 취소 (저장 안 함)</button>` : ""}`, "border-brand");
 }
 
 // 작업에 붙어서 끝날 때까지 몇 초마다 새 글을 받아 온다
@@ -141,7 +141,7 @@ function follow(el, jobId, ctx) {
     stopPolling();
     if (j.status !== "done") {                              // 취소·실패: 알림을 남기고 만들기 버튼을 다시 보여 준다
       flash(j.status === "cancelled"
-        ? `<div class="rounded-xl border border-line bg-white p-3 mb-3 text-sm">⏹️ ${esc(j.farm)} ${j.mode} 리포트 만들기를 취소했습니다. 저장된 리포트는 그대로입니다.</div>`
+        ? `<div class="rounded-xl border border-line bg-white p-3 mb-3 text-sm">${esc(j.farm)} ${j.mode} 리포트 만들기를 취소했습니다. 저장된 리포트는 그대로입니다.</div>`
         : errBox(`${j.error} (저장된 리포트는 그대로입니다)`));
       await renderReport(el, ctx);
       window.scrollTo(0, 0);
@@ -149,8 +149,8 @@ function follow(el, jobId, ctx) {
     }
     if (j.status === "done") {
       const b = j.backup;
-      flash(`<div class="rounded-xl border border-brand-line bg-brand-tint p-3 mb-3 text-sm">✅ ${esc(j.farm)} ${j.mode} 리포트를 만들었습니다. ${esc(j.saved_note || "")}
-        ${b ? `<div class="text-xs ${b.ok === false ? "text-neg" : "text-muted"} mt-1">${b.ok === true ? "☁️" : b.ok === false ? "⚠️" : "ℹ️"} ${esc(b.message)}</div>` : ""}</div>`);
+      flash(`<div class="rounded-xl border border-brand-line bg-brand-tint p-3 mb-3 text-sm">${esc(j.farm)} ${j.mode} 리포트를 만들었습니다. ${esc(j.saved_note || "")}
+        ${b ? `<div class="text-xs ${b.ok === false ? "text-neg" : "text-muted"} mt-1">${esc(b.message)}</div>` : ""}</div>`);
       st.openId = j.report_id;
       await renderReport(el, ctx);
       window.scrollTo(0, 0);
@@ -179,7 +179,7 @@ export async function renderReport(el, ctx) {
   if (st.openId === null && d.reports.length) st.openId = d.reports[0].id;
 
   el.innerHTML = `
-    <div class="rounded-2xl bg-brand-tint border border-brand-line p-3 text-sm">📌 <b>${esc(d.farm.name)}</b>
+    <div class="rounded-2xl bg-brand-tint border border-brand-line p-3 text-sm"><b>${esc(d.farm.name)}</b>
       ${d.last_visit ? `<span class="text-muted">· 리포트는 마지막 방문(${num(d.last_visit.visit_number)}차, ${esc(d.last_visit.visit_date)})의 조사표로 만들고 그 방문에 저장합니다.</span>`
         : '<span class="text-neg">· 방문 기록이 없어 리포트를 DB 에 저장하지 않습니다. 현장조사를 먼저 입력하세요.</span>'}</div>
     <h3 class="text-base font-bold mt-5 mb-2">리포트 만들기</h3>

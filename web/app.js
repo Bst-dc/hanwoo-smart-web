@@ -12,11 +12,11 @@ import { renderSurvey } from "./pages/survey.js";
 // ---------- 메뉴 ----------
 // render 가 없는 메뉴는 아직 옮기는 중이다 (기존 Streamlit 앱에서 쓴다).
 const TABS = [
-  { id: "dashboard", icon: "📊", label: "현황", title: "종합 현황 대시보드" },
-  { id: "shipment", icon: "🥩", label: "출하성적", title: "1단계 · 출하성적 비교분석" },
-  { id: "survey", icon: "📝", label: "현장조사", title: "2단계 · 현장방문조사" },
-  { id: "report", icon: "🤖", label: "AI리포트", title: "3단계 · AI 리포트" },
-  { id: "data", icon: "💾", label: "데이터", title: "데이터 관리 · 백업" },
+  { id: "dashboard", label: "현황", title: "종합 현황 대시보드" },
+  { id: "shipment", label: "출하성적", title: "1단계 · 출하성적 비교분석" },
+  { id: "survey", label: "현장조사", title: "2단계 · 현장방문조사" },
+  { id: "report", label: "AI리포트", title: "3단계 · AI 리포트" },
+  { id: "data", label: "데이터", title: "데이터 관리 · 백업" },
 ];
 
 const currentTab = () => TABS.find((t) => `#/${t.id}` === location.hash) || TABS[0];
@@ -24,7 +24,7 @@ const currentTab = () => TABS.find((t) => `#/${t.id}` === location.hash) || TABS
 function renderTabbar() {
   const cur = currentTab();
   document.querySelector("#tabbar > div").innerHTML = TABS.map((t) =>
-    `<a class="tab-item" href="#/${t.id}" ${t.id === cur.id ? 'aria-current="page"' : ""}><span class="ico" aria-hidden="true">${t.icon}</span>${esc(t.label)}</a>`).join("");
+    `<a class="tab-item" href="#/${t.id}" ${t.id === cur.id ? 'aria-current="page"' : ""}>${esc(t.label)}</a>`).join("");
 }
 
 // ---------- 농가 선택 ----------
@@ -77,7 +77,7 @@ async function renderPage() {
     else if (tab.id === "data") await renderData(el, { farm, farms: state.farms, isCurrent, onPickFarm, onSaved });
     else el.innerHTML = pending(tab);
   } catch (e) {
-    if (token === renderToken) el.innerHTML = `<div class="rounded-xl border border-neg/40 bg-white p-4 text-neg text-sm">⚠️ ${esc(e.message)}</div>`;
+    if (token === renderToken) el.innerHTML = `<div class="rounded-xl border border-neg/40 bg-white p-4 text-neg text-sm">${esc(e.message)}</div>`;
   }
 }
 

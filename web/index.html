@@ -3,26 +3,36 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#2F6B54">
+  <meta name="theme-color" content="#FFFFFF">
   <title>한우 스마트 컨설팅 시스템</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Serif+KR:wght@600&display=swap">
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <!-- 한우 업무 시스템 공통 디자인 (시험농장·포털과 같은 값). 스마트컨설팅 강조색은 초록 -->
+  <!-- 한우 업무 시스템 공통 디자인 — 2026-11-01 새 기준 (시험농장/DESIGN.md · hanwoo-portal/theme/hanwoo-theme.css 와 같은 값).
+       중립 회색 바탕 · 잉크색(거의 검정) 단추 · 장부 녹색(accent)은 데이터·고른 표시에만 · 이모지 쓰지 않음.
+       모서리 두 가지(상자 6px·입력칸 4px) — 화면 코드의 rounded-2xl/xl/lg 를 그대로 두고 값만 바꾼다. -->
   <style type="text/tailwindcss">
     @theme {
-      --font-sans: "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
-      --color-brand: #2F6B54;
-      --color-brand-dark: #234F3E;
-      --color-brand-tint: #E6F0EB;
-      --color-brand-line: #CFE0D6;
-      --color-page: #F6F5F1;
-      --color-panel: #F0EEE8;
-      --color-line: #E2DFD6;
-      --color-ink: #1E1F1C;
-      --color-muted: #77766E;
-      --color-pos: #2E6B57;
-      --color-neg: #9A4F3A;
+      --font-sans: "IBM Plex Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+      --font-serif: "Noto Serif KR", "Batang", "AppleMyungjo", serif;
+      --color-brand: #1E2423;
+      --color-brand-dark: #0D1110;
+      --color-brand-tint: #EEF0F0;
+      --color-brand-line: #D3D8D7;
+      --color-accent: #1F6B5E;
+      --color-page: #F5F6F6;
+      --color-panel: #EEF0F0;
+      --color-line: #E1E4E4;
+      --color-ink: #161A19;
+      --color-muted: #59605F;
+      --color-pos: #1E7A4F;
+      --color-neg: #B4321F;
+      --radius-2xl: 6px;
+      --radius-xl: 6px;
+      --radius-lg: 6px;
+      --radius-md: 4px;
     }
   </style>
   <link rel="stylesheet" href="app.css">
@@ -31,7 +41,7 @@
 
   <!-- 로그인 -->
   <section id="login" class="hidden max-w-sm mx-auto mt-16 px-5">
-    <h1 class="text-2xl font-bold mb-1">🔒 한우 스마트 컨설팅</h1>
+    <h1 class="text-2xl font-semibold font-serif mb-1">한우 스마트 컨설팅</h1>
     <p class="text-sm text-muted mb-6">대구축협 지도컨설팅 직원 전용입니다. 접속 비밀번호를 입력하세요.</p>
     <form id="login-form" class="space-y-3">
       <label class="block text-sm font-medium" for="login-pw">접속 비밀번호</label>
@@ -46,7 +56,7 @@
   <div id="app" class="hidden">
     <header class="app-header sticky top-0 z-20 bg-white border-b border-line">
       <div class="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
-        <span class="w-8 h-8 shrink-0 rounded-lg bg-brand text-white text-sm font-bold grid place-items-center" aria-hidden="true">컨</span>
+        <span class="w-8 h-8 shrink-0 rounded-md bg-brand text-white text-sm font-semibold grid place-items-center" aria-hidden="true">컨</span>
         <div id="farm-picker" class="relative flex-1 min-w-0">
           <button id="farm-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="컨설팅 농가 선택"
                   class="w-full flex items-center justify-between gap-2 rounded-xl border border-line bg-white px-3 py-2 text-base font-semibold text-left focus:outline-2 focus:outline-brand">

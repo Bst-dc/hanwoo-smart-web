@@ -10,7 +10,7 @@ const STATUS = {
 const chip = (s) => `<span class="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS[s][1]}">${STATUS[s][0]}</span>`;
 const f1 = (v) => (v === null || v === undefined ? "-" : Number(v).toFixed(1).replace(/\.0$/, ""));
 const btn = "rounded-xl px-4 py-3 min-h-[48px] text-sm font-semibold disabled:opacity-50";
-const warn = (t) => `<p class="text-sm text-neg mt-2">⚠️ ${t}</p>`;
+const warn = (t) => `<p class="text-sm text-neg mt-2">${t}</p>`;
 const note = (t) => `<p class="text-xs text-muted mt-1">${t}</p>`;
 
 // 농가가 바뀌면 처음부터. 같은 농가에서 화면을 다시 그려도 입력하던 것은 남는다.
@@ -29,10 +29,9 @@ function ownershipLine(o) {
 
 function savedFlash(farmName, saved, backup) {
   const tone = backup.ok === false ? "text-neg" : "text-muted";
-  const icon = backup.ok === true ? "☁️" : backup.ok === false ? "⚠️" : "ℹ️";
   flash(`<div class="rounded-xl border border-brand-line bg-brand-tint p-3 mb-3 text-sm">
-    ✅ <b>${esc(farmName)}</b> 농가에 출하성적 ${num(saved)}두를 저장했습니다.
-    <div class="text-xs ${tone} mt-1">${icon} ${esc(backup.message)}</div></div>`);
+    <b>${esc(farmName)}</b> 농가에 출하성적 ${num(saved)}두를 저장했습니다.
+    <div class="text-xs ${tone} mt-1">${esc(backup.message)}</div></div>`);
 }
 
 // ---------------------------------------------------------------- 축평원 조회
@@ -44,14 +43,14 @@ function apiTab(farm) {
     const moving = chosen.filter((r) => r.status === "move").length;
     result = `
       <div class="mt-4 border-t border-line pt-3">
-        <div class="font-semibold">🔍 조회 결과 검토 <span class="text-sm font-normal text-muted">가져옴 ${num(L.records.length)}두${L.failed.length ? ` · 실패 ${num(L.failed.length)}두` : ""}${L.duplicates ? ` · 겹친 번호 ${num(L.duplicates)}개 뺌` : ""}</span></div>
+        <div class="font-semibold">조회 결과 검토 <span class="text-sm font-normal text-muted">가져옴 ${num(L.records.length)}두${L.failed.length ? ` · 실패 ${num(L.failed.length)}두` : ""}${L.duplicates ? ` · 겹친 번호 ${num(L.duplicates)}개 뺌` : ""}</span></div>
         ${L.failed.length ? `<details class="mt-2 text-sm"><summary class="cursor-pointer text-neg">가져오지 못한 ${num(L.failed.length)}두 보기</summary>
           <ul class="mt-1 space-y-1">${L.failed.map((f) => `<li class="kpi-value text-xs">${esc(f.animal_no)} — <span class="text-muted">${esc(f.reason)}</span></li>`).join("")}</ul></details>` : ""}
         ${L.records.length ? `${ownershipLine(L.ownership)}
         ${note("저장하지 않을 개체는 체크를 끄세요.")}
         <ul class="divide-y divide-line mt-1">${L.records.map((r, i) => `
           <li><label class="flex items-start gap-3 py-2.5">
-            <input type="checkbox" data-i="${i}" ${st.off.has(i) ? "" : "checked"} class="pick mt-0.5 h-5 w-5 shrink-0 accent-[#2F6B54]">
+            <input type="checkbox" data-i="${i}" ${st.off.has(i) ? "" : "checked"} class="pick mt-0.5 h-5 w-5 shrink-0 accent-brand">
             <div class="flex-1 min-w-0">
               <div class="flex items-center justify-between gap-2"><span class="kpi-value font-semibold">${esc(r.animal_no)}</span>${chip(r.status)}</div>
               <div class="text-xs text-muted mt-0.5">${esc(r.gender || "성별 없음(거세로 저장)")} · ${esc(r.slaughter_date || "도축일 없음")} · 도체중 ${f1(r.carcass_weight)}kg · ${esc(r.grade_quality || "-")}/${esc(r.grade_yield || "-")} · BMS ${f1(r.bms)} · ${f1(r.month_age)}개월</div>
@@ -59,15 +58,15 @@ function apiTab(farm) {
         ${moving ? `<label class="flex items-start gap-2 mt-3 text-sm text-neg"><input id="api-confirm" type="checkbox" ${st.confirm ? "checked" : ""} class="mt-0.5 h-5 w-5 shrink-0">
           <span>다른 농가에 등록된 ${num(moving)}두를 <b>${esc(farm.name)}</b> 농가로 옮기는 것을 확인했습니다.</span></label>` : ""}
         <div class="grid grid-cols-2 gap-2 mt-3">
-          <button id="api-clear" class="${btn} border border-line bg-white">🔄 목록 비우기</button>
-          <button id="api-save" class="${btn} bg-brand text-white" ${chosen.length ? "" : "disabled"}>💾 ${num(chosen.length)}두 저장</button>
+          <button id="api-clear" class="${btn} border border-line bg-white">목록 비우기</button>
+          <button id="api-save" class="${btn} bg-brand text-white" ${chosen.length ? "" : "disabled"}>${num(chosen.length)}두 저장</button>
         </div>` : '<p class="text-sm text-muted mt-2">가져온 성적이 없습니다. 번호와 아래 실패 이유를 확인해주세요.</p>'}
       </div>`;
   }
   return `
     <label class="block text-sm text-muted mb-1" for="api-text">이력번호 (한 줄에 하나, 쉼표로 나눠도 됩니다 · 한 번에 200두까지)</label>
     <textarea id="api-text" rows="4" class="w-full rounded-xl border border-line bg-white px-3 py-2 kpi-value" placeholder="002154889011&#10;002154889012" autocomplete="off">${esc(st.text)}</textarea>
-    <button id="api-lookup" class="${btn} w-full mt-2 bg-brand text-white" ${st.busy ? "disabled" : ""}>${st.busy ? "축평원에 묻는 중… (많으면 1분 정도)" : "⚡ 축평원 성적 조회 (저장 안 함)"}</button>
+    <button id="api-lookup" class="${btn} w-full mt-2 bg-brand text-white" ${st.busy ? "disabled" : ""}>${st.busy ? "축평원에 묻는 중… (많으면 1분 정도)" : "축평원 성적 조회 (저장 안 함)"}</button>
     ${result}`;
 }
 
@@ -84,7 +83,7 @@ function bindApi(box, farm, redraw, onSaved) {
       st.confirm = false;
     } catch (e) {
       st.lookup = null;
-      flash(`<div class="rounded-xl border border-neg/40 bg-white p-3 mb-3 text-sm text-neg">⚠️ ${esc(e.message)}</div>`);
+      flash(`<div class="rounded-xl border border-neg/40 bg-white p-3 mb-3 text-sm text-neg">${esc(e.message)}</div>`);
     } finally { st.busy = false; redraw(); }
   });
   if (!st.lookup) return;
@@ -107,8 +106,8 @@ function bindApi(box, farm, redraw, onSaved) {
       window.scrollTo(0, 0);
       await onSaved();
     } catch (e) {
-      flash(`<div class="rounded-xl border border-neg/40 bg-white p-3 mb-3 text-sm text-neg">⚠️ ${esc(e.message)}</div>`);
-      ev.target.disabled = false; ev.target.textContent = `💾 ${num(records.length)}두 저장`;
+      flash(`<div class="rounded-xl border border-neg/40 bg-white p-3 mb-3 text-sm text-neg">${esc(e.message)}</div>`);
+      ev.target.disabled = false; ev.target.textContent = `${num(records.length)}두 저장`;
     }
   });
 }
@@ -127,7 +126,7 @@ function excelTab(farm) {
     const rows = P.sample.map((r) => [r.animal_no, ...(n ? [r.name] : []), r.gender, r.slaughter_date, r.carcass_weight, r.grade_quality, r.grade_yield, r.bms, r.backfat, r.ribeye, r.month_age, STATUS[r.status][0]]);
     body = `
       <div class="mt-4 border-t border-line pt-3 text-sm">
-        <div class="font-semibold">📄 미리보기 <span class="font-normal text-muted">(아직 저장 안 됨)</span></div>
+        <div class="font-semibold">미리보기 <span class="font-normal text-muted">(아직 저장 안 됨)</span></div>
         <p class="mt-1">시트 <b>${esc(P.sheet)}</b> · 전체 ${num(P.total_rows)}행${P.invalid ? ` · 이력번호가 없거나 잘못된 ${num(P.invalid)}행 제외` : ""}</p>
         ${P.missing_cols.length ? warn(`파일에 없는 칸: ${P.missing_cols.map(esc).join(", ")} → 빈 값으로 저장됩니다.`) : ""}
         ${n ? `
@@ -145,7 +144,7 @@ function excelTab(farm) {
         ${P.needs_confirm ? `<label class="flex items-start gap-2 mt-3 text-sm text-neg"><input id="xl-confirm" type="checkbox" class="mt-0.5 h-5 w-5 shrink-0">
           <span>위 내용을 확인했고 <b>${esc(farm.name)}</b> 농가로 저장합니다.</span></label>` : ""}
         ${note("엑셀 저장은 축평원에서 받은 kg당 단가·금액을 지우지 않습니다.")}
-        <button id="xl-save" class="${btn} w-full mt-3 bg-brand text-white" ${P.unique ? "" : "disabled"}>💾 ${esc(farm.name)} 농가로 ${num(P.unique)}두 저장</button>
+        <button id="xl-save" class="${btn} w-full mt-3 bg-brand text-white" ${P.unique ? "" : "disabled"}>${esc(farm.name)} 농가로 ${num(P.unique)}두 저장</button>
       </div>`;
   }
   return `
@@ -174,7 +173,7 @@ function bindExcel(box, farm, redraw, onSaved) {
       st.mode = res.mode;
     } catch (e) {
       st.preview = null;
-      flash(`<div class="rounded-xl border border-neg/40 bg-white p-3 mb-3 text-sm text-neg">⚠️ ${esc(e.message)}</div>`);
+      flash(`<div class="rounded-xl border border-neg/40 bg-white p-3 mb-3 text-sm text-neg">${esc(e.message)}</div>`);
     } finally { st.busy = false; redraw(); }
   };
   box.querySelector("#xl-file").addEventListener("change", (e) => {
@@ -199,8 +198,8 @@ function bindExcel(box, farm, redraw, onSaved) {
       window.scrollTo(0, 0);
       await onSaved();
     } catch (e) {
-      flash(`<div class="rounded-xl border border-neg/40 bg-white p-3 mb-3 text-sm text-neg">⚠️ ${esc(e.message)}</div>`);
-      ev.target.disabled = false; ev.target.textContent = `💾 ${farm.name} 농가로 ${num(st.preview.unique)}두 저장`;
+      flash(`<div class="rounded-xl border border-neg/40 bg-white p-3 mb-3 text-sm text-neg">${esc(e.message)}</div>`);
+      ev.target.disabled = false; ev.target.textContent = `${farm.name} 농가로 ${num(st.preview.unique)}두 저장`;
     }
   });
 }
@@ -217,7 +216,7 @@ export function renderInput(box, { farm, onSaved }) {
   const tabBtn = (id, label) => `<button data-tab="${id}" class="itab flex-1 px-3 py-2 min-h-[44px] ${id === "excel" ? "border-l border-line" : ""} ${st.tab === id ? "bg-brand text-white font-semibold" : "bg-white text-muted"}" aria-pressed="${st.tab === id}">${label}</button>`;
   box.innerHTML = `
     <p class="text-sm mb-3">저장하는 성적은 <b>${esc(farm.name)}</b> 농가로 들어갑니다. 다른 농가라면 위쪽 농가 선택을 먼저 바꿔주세요.</p>
-    <div class="flex rounded-xl border border-line overflow-hidden text-sm mb-3" role="group" aria-label="입력 방식">${tabBtn("api", "⚡ 축평원 조회")}${tabBtn("excel", "📁 엑셀 업로드")}</div>
+    <div class="flex rounded-xl border border-line overflow-hidden text-sm mb-3" role="group" aria-label="입력 방식">${tabBtn("api", "축평원 조회")}${tabBtn("excel", "엑셀 업로드")}</div>
     <div id="itab-body">${st.tab === "api" ? apiTab(farm) : excelTab(farm)}</div>`;
   box.querySelectorAll(".itab").forEach((b) => b.addEventListener("click", () => { st.tab = b.dataset.tab; redraw(); }));
   if (st.tab === "api") bindApi(box, farm, redraw, onSaved);

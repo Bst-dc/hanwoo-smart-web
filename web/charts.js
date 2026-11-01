@@ -1,5 +1,5 @@
 // 여러 화면이 같이 쓰는 차트 (Chart.js). 색은 기존 Streamlit 앱과 같다.
-export const C = { farm: "#2A78D6", nat: "#A8A69D", cow: "#D95926", bull: "#77766E", grid: "#E2DFD6", label: "#77766E" };
+export const C = { farm: "#2A78D6", nat: "#A8ADAC", cow: "#D95926", bull: "#59605F", grid: "#E1E4E4", label: "#59605F" };
 
 export const fmt1 = (v) => (v === null || v === undefined ? "-" : Number(v).toFixed(1));
 

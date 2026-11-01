@@ -9,7 +9,7 @@ let FORM = null;                                    // 양식은 한 번만 받�
 
 const btn = "rounded-xl px-4 py-3 min-h-[48px] text-sm font-semibold disabled:opacity-50";
 const inputCls = "w-full rounded-xl border border-line bg-white px-3 py-2";
-const errBox = (m) => `<div class="rounded-xl border border-neg/40 bg-white p-3 mb-3 text-sm text-neg">⚠️ ${esc(m)}</div>`;
+const errBox = (m) => `<div class="rounded-xl border border-neg/40 bg-white p-3 mb-3 text-sm text-neg">${esc(m)}</div>`;
 
 // 임시 저장: 입력하면 0.5초 뒤 브라우저 저장소에 남긴다 (농가 전환·신호 끊김·폰이 탭을 정리해도 이어서 쓰기). 서버 저장 성공·'저장하지 않고 나가기' 때 지운다.
 const LS = (() => { try { return window.localStorage; } catch { return null; } })();
@@ -103,7 +103,7 @@ function draftCard(d) {
     return v ? `${num(v.visit_number)}차 방문조사 고치기` : "지워진 방문의 조사표";
   };
   return `<div class="rounded-2xl border border-neg/40 bg-white p-3 mt-3 text-sm">
-    <p class="font-semibold">📝 저장하지 않은 조사표가 있습니다</p>
+    <p class="font-semibold">저장하지 않은 조사표가 있습니다</p>
     ${drafts.map((x) => `<div class="flex flex-wrap items-center justify-between gap-2 mt-2">
       <span>${esc(label(x))} <span class="text-muted kpi-value">· ${fmtTime(x.at)} 임시 저장</span></span>
       <span class="flex gap-2">
@@ -116,11 +116,11 @@ function listView(d) {
   const next = d.visits.length ? Math.max(...d.visits.map((v) => v.visit_number)) + 1 : 1;
   const hasNewDraft = !!readDraft(LS, d.farm.id, null);
   return `
-    <div class="rounded-2xl bg-brand-tint border border-brand-line p-3 text-sm">📌 <b>${esc(d.farm.name)}</b> <span class="text-muted">(조합원번호 ${esc(d.farm.code || "미등록")}, ${esc(d.farm.region || "지역 미입력")})</span></div>
+    <div class="rounded-2xl bg-brand-tint border border-brand-line p-3 text-sm"><b>${esc(d.farm.name)}</b> <span class="text-muted">(조합원번호 ${esc(d.farm.code || "미등록")}, ${esc(d.farm.region || "지역 미입력")})</span></div>
     ${draftCard(d)}
     <button id="sv-new" class="${btn} w-full mt-3 bg-brand text-white">＋ 새 방문조사 작성 (${num(next)}차)${hasNewDraft ? " — 임시 저장본 이어서" : ""}</button>
     <details class="mt-3 rounded-2xl bg-white border border-line p-4">
-      <summary class="cursor-pointer text-sm font-semibold">🖨️ 종이 조사표로 현장에서 적고 나중에 입력하기</summary>
+      <summary class="cursor-pointer text-sm font-semibold">종이 조사표로 현장에서 적고 나중에 입력하기</summary>
       <p class="text-xs text-muted mt-2">A4 로 인쇄해 손으로 적은 뒤, 위 '새 방문조사 작성'에 같은 순서로 옮겨 입력하세요. ${esc(d.farm.name)} 농가의 이름·번호·지역은 미리 적혀 나옵니다.</p>
       <div class="grid grid-cols-2 gap-2 mt-3">
         <a class="${btn} text-center border border-line bg-white" href="/api/surveys/sheet?farm_id=${d.farm.id}&inline=1" target="_blank" rel="noopener">인쇄용 열기 (${esc(d.farm.name)})</a>
@@ -157,7 +157,7 @@ function formView(farm) {
           <div class="mt-3 grid gap-4 ${s.fields.some((f) => f.kind === "feed" || f.kind === "textarea") ? "" : "sm:grid-cols-2"}">${s.fields.map((f) => field(f, st.values[f.key])).join("")}</div>
         </details>`).join("")}
       <div class="savebar z-10 rounded-2xl bg-white/95 border border-line p-3 shadow-lg">
-        <button id="sv-save" type="submit" class="${btn} w-full bg-brand text-white">💾 ${st.meta ? "고친 내용 저장" : "방문조사 저장"}</button>
+        <button id="sv-save" type="submit" class="${btn} w-full bg-brand text-white">${st.meta ? "고친 내용 저장" : "방문조사 저장"}</button>
       </div>
     </form>`;
 }
@@ -239,8 +239,8 @@ function bindForm(el, farm, rerender) {
       clearDraft(LS, ...draftIds);                         // 서버에 들어갔으니 임시본은 지운다
       setDirty(false);
       const b = r.backup;
-      flash(`<div class="rounded-xl border border-brand-line bg-brand-tint p-3 mb-3 text-sm">✅ <b>${esc(r.farm)}</b> 농가 ${num(r.visit_number)}차 방문조사를 ${st.meta ? "고쳐" : ""} 저장했습니다.
-        <div class="text-xs ${b.ok === false ? "text-neg" : "text-muted"} mt-1">${b.ok === true ? "☁️" : b.ok === false ? "⚠️" : "ℹ️"} ${esc(b.message)}</div></div>`);
+      flash(`<div class="rounded-xl border border-brand-line bg-brand-tint p-3 mb-3 text-sm"><b>${esc(r.farm)}</b> 농가 ${num(r.visit_number)}차 방문조사를 ${st.meta ? "고쳐" : ""} 저장했습니다.
+        <div class="text-xs ${b.ok === false ? "text-neg" : "text-muted"} mt-1">${esc(b.message)}</div></div>`);
       Object.assign(st, { view: "list", visitId: null, values: null, meta: null });
       await rerender(true);
       window.scrollTo(0, 0);
@@ -250,7 +250,7 @@ function bindForm(el, farm, rerender) {
       window.scrollTo(0, 0);
     } finally {
       st.saving = false;
-      if (saveBtn.isConnected) { saveBtn.disabled = false; saveBtn.textContent = `💾 ${st.meta ? "고친 내용 저장" : "방문조사 저장"}`; }
+      if (saveBtn.isConnected) { saveBtn.disabled = false; saveBtn.textContent = `${st.meta ? "고친 내용 저장" : "방문조사 저장"}`; }
     }
   });
 }
@@ -261,7 +261,7 @@ export async function renderSurvey(el, { farm, farms, onPickFarm, onSaved = asyn
     el.innerHTML = card(`<h2 class="text-lg font-bold mb-1">2단계 · 현장방문조사</h2>
       <p class="text-sm text-muted mb-3">먼저 조사할 농가를 고르세요. (위쪽 목록에서 골라도 됩니다)</p>
       <div class="mb-4 rounded-xl border border-line bg-panel p-3">
-        <p class="text-sm font-semibold mb-2">🖨️ 종이 조사표 (농가를 고르지 않고 빈 양식)</p>
+        <p class="text-sm font-semibold mb-2">종이 조사표 (농가를 고르지 않고 빈 양식)</p>
         <div class="grid grid-cols-2 gap-2">
           <a class="rounded-xl border border-line bg-white px-3 py-2 min-h-[44px] flex items-center justify-center text-sm font-semibold" href="/api/surveys/sheet">빈 양식 내려받기</a>
           <a class="rounded-xl border border-line bg-white px-3 py-2 min-h-[44px] flex items-center justify-center text-sm font-semibold" href="/api/surveys/sheet?inline=1" target="_blank" rel="noopener">빈 양식 열어 인쇄</a>

@@ -82,7 +82,7 @@ export async function renderDashboard(el, ctx) {
       ${kpi("조사표만 있는 농가", `${num(k.missing_shipment.length)} 농가`, "출하성적 미수집")}
     </div>
     <details class="mt-3 rounded-2xl bg-white border border-line p-4">
-      <summary class="cursor-pointer font-semibold text-sm">📌 누락 데이터 보유 농가 명단</summary>
+      <summary class="cursor-pointer font-semibold text-sm">누락 데이터 보유 농가 명단</summary>
       <div class="mt-3 space-y-3 text-sm">
         <div><div class="font-semibold">출하성적만 있고 조사표 없는 농가</div><div class="text-muted mt-1">${list(k.missing_survey)}</div></div>
         <div><div class="font-semibold">조사표만 있고 출하성적 없는 농가</div><div class="text-muted mt-1">${list(k.missing_shipment)}</div></div>
@@ -151,7 +151,7 @@ export async function renderDashboard(el, ctx) {
   redrawCompare();
   el.querySelectorAll("#member-seg button").forEach((b) => b.addEventListener("click", () => {
     member = b.dataset.m;
-    renderDashboard(el, ctx).catch((e) => { el.innerHTML = `<p class="text-sm text-neg">⚠️ ${esc(e.message)}</p>`; });
+    renderDashboard(el, ctx).catch((e) => { el.innerHTML = `<p class="text-sm text-neg">${esc(e.message)}</p>`; });
   }));
   el.querySelectorAll(".farm-card").forEach((b) => b.addEventListener("click", () => onPickFarm(b.dataset.farm)));
 }

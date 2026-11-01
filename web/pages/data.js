@@ -4,7 +4,7 @@ import { api, card, esc, flash, num, table } from "../api.js";
 
 const btn = "rounded-xl px-4 py-3 min-h-[48px] text-sm font-semibold disabled:opacity-50";
 const inputCls = "w-full rounded-xl border border-line bg-white px-3 py-2";
-const errBox = (m) => `<div class="rounded-xl border border-neg/40 bg-white p-3 mb-3 text-sm text-neg">⚠️ ${esc(m)}</div>`;
+const errBox = (m) => `<div class="rounded-xl border border-neg/40 bg-white p-3 mb-3 text-sm text-neg">${esc(m)}</div>`;
 const BREEDING = ["비육우", "일관사육", "번식우"];
 const MEMBER = ["조합원", "비조합원"];
 const form = { code: "", name: "", owner: "", region: "", breeding_type: "비육우", total_heads: 100, member_type: "조합원", open: false };
@@ -18,7 +18,7 @@ function newFarmForm() {
   const seg = BREEDING.map((b) => `<button type="button" data-bt="${b}" class="bt px-3 py-2 min-h-[44px] rounded-xl border text-sm ${form.breeding_type === b ? "bg-brand text-white border-brand font-semibold" : "bg-white border-line text-muted"}">${b}</button>`).join("");
   return `
     <details id="nf" class="rounded-2xl bg-white border border-line p-4" ${form.open ? "open" : ""}>
-      <summary class="cursor-pointer font-semibold">➕ 신규 농가 등록</summary>
+      <summary class="cursor-pointer font-semibold">신규 농가 등록</summary>
       <form id="nf-form" class="mt-3 grid gap-3 sm:grid-cols-2" novalidate>
         <div class="sm:col-span-2"><label class="block text-sm text-muted mb-1" for="nf-member">구분</label>
           <select id="nf-member" data-k="member_type" class="${inputCls}">${MEMBER.map((m) => `<option ${form.member_type === m ? "selected" : ""}>${m}</option>`).join("")}</select></div>
@@ -49,7 +49,7 @@ function bindNewFarm(el, ctx) {
       dup = found;
       el.querySelector("#nf-dup").innerHTML = dup ? `
         <div class="rounded-xl border border-neg/40 bg-[#FBEDE8] p-3 text-sm text-neg">
-          ⚠️ 이미 등록된 농가와 일치합니다 — <b>${esc(dup.name)}</b> (${esc(dup.owner || "대표자 미입력")}, ${esc(dup.region || "지역 미입력")}, 조합원번호 ${esc(dup.code || "미입력")}).
+          이미 등록된 농가와 일치합니다 — <b>${esc(dup.name)}</b> (${esc(dup.owner || "대표자 미입력")}, ${esc(dup.region || "지역 미입력")}, 조합원번호 ${esc(dup.code || "미입력")}).
           <div class="mt-1">같은 농가라면 새로 등록하지 말고 위쪽 농가 선택에서 고르세요. 새로 저장하면 출하성적과 조사표가 서로 다른 농가로 쪼개집니다.</div>
           <label class="flex items-center gap-2 mt-2"><input id="nf-confirm" type="checkbox" class="h-5 w-5"> 그래도 별개의 새 농가로 등록합니다</label>
         </div>` : "";
@@ -82,8 +82,8 @@ function bindNewFarm(el, ctx) {
       const b = r.backup;
       await ctx.onSaved();
       ctx.onPickFarm(r.id);                                   // 농가를 바꾸면 알림이 지워지므로 알림은 그 뒤에
-      flash(`<div class="rounded-xl border border-brand-line bg-brand-tint p-3 mb-3 text-sm">✅ <b>${esc(r.name)}</b> 농가를 등록하고 선택했습니다. 이제 출하성적·현장조사를 입력할 수 있습니다.
-        <div class="text-xs ${b.ok === false ? "text-neg" : "text-muted"} mt-1">${b.ok === true ? "☁️" : b.ok === false ? "⚠️" : "ℹ️"} ${esc(b.message)}</div></div>`);
+      flash(`<div class="rounded-xl border border-brand-line bg-brand-tint p-3 mb-3 text-sm"><b>${esc(r.name)}</b> 농가를 등록하고 선택했습니다. 이제 출하성적·현장조사를 입력할 수 있습니다.
+        <div class="text-xs ${b.ok === false ? "text-neg" : "text-muted"} mt-1">${esc(b.message)}</div></div>`);
       window.scrollTo(0, 0);
     } catch (ex) {
       flash(errBox(ex.message)); window.scrollTo(0, 0);
@@ -120,7 +120,7 @@ export async function renderData(el, ctx) {
       ${stat("농가", d.farms.count, "곳")}${stat("출하성적", d.shipments.count, "두")}
       ${stat("현장 방문", d.visits.count, "회")}${stat("AI 리포트", d.reports.count, "개")}
     </div>
-    <h3 class="text-base font-bold mt-6 mb-2">📥 내려받기</h3>
+    <h3 class="text-base font-bold mt-6 mb-2">내려받기</h3>
     ${card(`
       <div class="grid gap-2 sm:grid-cols-3">
         <a class="${btn} border border-line bg-white text-center" href="/api/data/export/farms${q}">농가 목록 CSV</a>
@@ -129,10 +129,10 @@ export async function renderData(el, ctx) {
       </div>
       <p class="text-xs text-muted mt-2">엑셀에서 바로 열 수 있습니다 (한글 깨짐 없음). ${farm ? "지금은 이 농가 것만 받습니다." : ""}</p>
       <hr class="my-4 border-line">
-      <div class="font-semibold">💾 전체 DB 파일 백업 (.db)</div>
+      <div class="font-semibold">전체 DB 파일 백업 (.db)</div>
       <p class="text-sm text-muted mt-1">농가·방문·조사표·출하성적·AI 리포트 전체를 파일 하나로 받습니다. <b class="text-neg">조합원 정보가 들어 있으니 보관에 주의하세요.</b> 위 농가 선택과 상관없이 전체를 받습니다.</p>
       <a id="db-dl" class="${btn} mt-3 inline-flex items-center justify-center border border-line bg-white" href="/api/data/db-file">DB 파일 받기 (몇 초 걸림)</a>`)}
-    <h3 class="text-base font-bold mt-6 mb-2">📋 자료 보기</h3>
+    <h3 class="text-base font-bold mt-6 mb-2">자료 보기</h3>
     <div class="space-y-3">
       ${preview("농가 목록", d.farms)}
       ${preview("출하성적 (도축일 최신 순)", d.shipments)}

@@ -47,7 +47,7 @@ function trendTable(t) {
 
 // 추이 차트 7개. 근내지방도(BMS)를 맨 위에 전체 폭으로 크게, 나머지 6개는 3열. 값이 모두 없는 지표는 그리지 않는다.
 const CHARTS = [
-  { key: "bms", title: "⭐ 근내지방도(BMS) 추이", type: "line", main: true },
+  { key: "bms", title: "근내지방도(BMS) 추이", type: "line", main: true },
   { key: "carcass_weight", title: "도체중 추이 (kg)", type: "line" },
   { key: "backfat", title: "등지방두께 추이 (mm)", type: "line" },
   { key: "ribeye", title: "등심단면적 추이 (㎠)", type: "line" },
@@ -115,7 +115,7 @@ export function compareSheetHtml(d, { gName, yearCaption }) {
   const today = new Date().toLocaleDateString("ko-KR");
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(f.name)} 전국 1:1 비교표</title><style>${CSS}</style></head><body>
-<div class="bar"><button onclick="window.print()">🖨️ 인쇄 (A4)</button><label>글자 크기 <select onchange="document.documentElement.style.setProperty('--fs', this.value)"><option value="12px">작게</option><option value="14px" selected>보통</option><option value="16px">크게</option><option value="18px">아주 크게</option></select></label><span>인쇄 창에서 'PDF로 저장'을 고르면 파일로도 받을 수 있습니다.</span></div>
+<div class="bar"><button onclick="window.print()">인쇄 (A4)</button><label>글자 크기 <select onchange="document.documentElement.style.setProperty('--fs', this.value)"><option value="12px">작게</option><option value="14px" selected>보통</option><option value="16px">크게</option><option value="18px">아주 크게</option></select></label><span>인쇄 창에서 'PDF로 저장'을 고르면 파일로도 받을 수 있습니다.</span></div>
 <div class="sheet">
 <h1>출하성적 전국 1:1 비교표</h1>
 <div class="meta"><b>${esc(f.name)}</b> (조합원번호 ${esc(f.code || "미등록")}, ${esc(f.region || "지역 미입력")}) · 출력일 ${esc(today)}</div>

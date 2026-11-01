@@ -29,7 +29,7 @@ function profitCard(p, count) {
   const plus = p.total >= 0;
   const head = `${plus ? "+" : ""}${num(p.per_head)}원`;
   const total = `${plus ? "+" : ""}${num(p.total)}원`;
-  return card(`<h3 class="font-bold mb-2">💰 음성공판장 기준 추정 수익성</h3>
+  return card(`<h3 class="font-bold mb-2">음성공판장 기준 추정 수익성</h3>
     <div class="grid grid-cols-2 gap-3">
       <div><div class="text-xs text-muted">두당 (전국 평균 대비)</div><div class="kpi-value text-lg font-bold ${plus ? "text-pos" : "text-neg"}">${head}</div></div>
       <div><div class="text-xs text-muted">총 출하 ${num(count)}두 기준</div><div class="kpi-value text-lg font-bold ${plus ? "text-pos" : "text-neg"}">${total}</div></div>
@@ -56,7 +56,7 @@ function alertCard(a) {
   const tone = a.tier === 3 ? "bg-[#FBEDE8] text-neg" : a.tier > 0 ? "bg-[#FFF4E0] text-[#8A5A00]" : "bg-brand-tint text-pos";
   const drop = a.drop === null ? "판정 불가 (직전 해 두수 부족)" : a.drop ? `<b class="text-neg">유의한 하락</b>` : "유의한 하락 없음";
   const prev = a.prev_bms === null ? "" : `직전 해 ${fx(a.prev_bms)} → ${fx(a.bms)} (${a.change > 0 ? "+" : ""}${fx(a.change)}) · `;
-  return card(`<div class="flex items-center justify-between gap-2"><h3 class="font-bold">🥩 근내지방도 신호 <span class="text-sm font-normal text-muted">(${a.year}년)</span></h3>
+  return card(`<div class="flex items-center justify-between gap-2"><h3 class="font-bold">근내지방도 신호 <span class="text-sm font-normal text-muted">(${a.year}년)</span></h3>
       <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${tone}">전국 대비 ${esc(a.tier_label)}</span></div>
     <div class="kpi-value text-sm mt-2">농가 <b>${fx(a.bms)}</b> · 전국 ${fx(a.national, 1)} · 격차 <b class="${a.diff < 0 ? "text-neg" : "text-ink"}">${a.diff > 0 ? "+" : ""}${fx(a.diff)}</b> · ${num(a.n_head)}두</div>
     <div class="text-sm text-muted mt-1">${prev}${drop} · 위험 지수 ${fx(a.risk)}</div>
@@ -96,34 +96,34 @@ export async function renderShipment(el, { farm, farms, onPickFarm, onSaved = as
     body = card(`<p class="text-sm text-muted">${filters.year ? `${esc(filters.year)}년에 등록된 ${esc(gName)} 출하 성적이 없습니다. 다른 연도나 성별을 골라보세요.` : "등록된 출하 성적이 없습니다. 위 '출하성적 입력'에서 이력번호 조회나 엑셀로 성적을 먼저 입력해주세요."}</p>`);
   } else {
     body = `
-      <h3 class="text-base font-bold mt-5 mb-1">📊 전국 1:1 비교 <span class="text-sm font-normal text-muted">(${esc(gName)} 기준 · ${esc(cmpCaption)} · 전국 ${d.national_year}년 평균)</span></h3>
+      <h3 class="text-base font-bold mt-5 mb-1">전국 1:1 비교 <span class="text-sm font-normal text-muted">(${esc(gName)} 기준 · ${esc(cmpCaption)} · 전국 ${d.national_year}년 평균)</span></h3>
       ${d.gender_forced ? `<p class="text-xs text-muted mb-2">※ 성별 '전체'여도 전국 비교는 성별이 섞이지 않게 ${esc(gName)} 출하분만으로 계산합니다. 아래 개체별 성적표에는 전체 개체가 나옵니다.</p>` : ""}
       ${card(comparisonList(d.comparison))}
       <div class="grid grid-cols-2 gap-2 mt-3">
-        <button id="sh-print" class="rounded-xl border border-line bg-white px-3 py-2 min-h-[44px] text-sm font-semibold active:bg-panel">🖨️ 비교표 인쇄</button>
+        <button id="sh-print" class="rounded-xl border border-line bg-white px-3 py-2 min-h-[44px] text-sm font-semibold active:bg-panel">비교표 인쇄</button>
         <button id="sh-dl" class="rounded-xl border border-line bg-white px-3 py-2 min-h-[44px] text-sm font-semibold active:bg-panel">⬇️ 비교표 내려받기</button>
       </div>
       <div class="mt-3">${profitCard(d.profit, d.total_count)}</div>
 
-      <h3 class="text-base font-bold mt-6 mb-2">📈 최근 ${d.trend.years.length}년 추이 <span class="text-sm font-normal text-muted">(${d.trend.years[0]}~${d.trend.years.at(-1)}년)</span></h3>
+      <h3 class="text-base font-bold mt-6 mb-2">최근 ${d.trend.years.length}년 추이 <span class="text-sm font-normal text-muted">(${d.trend.years[0]}~${d.trend.years.at(-1)}년)</span></h3>
       ${card(`
         <label class="block text-sm text-muted mb-1" for="sh-metric">평가항목</label>
         <select id="sh-metric" class="w-full rounded-xl border border-line bg-white px-3 py-2 mb-3">
           ${d.trend.metrics.map((m) => `<option value="${m.key}">${esc(m.label)}</option>`).join("")}</select>
         <div class="relative" style="height:240px"><canvas id="sh-trend" role="img" aria-label="최근 연도별 평가항목 추이"></canvas></div>`)}
       <details class="mt-3 rounded-2xl bg-white border border-line p-4">
-        <summary class="cursor-pointer font-semibold text-sm">🖨️ 최근 ${d.trend.years.length}년 전국 1:1 종합 비교표</summary>
+        <summary class="cursor-pointer font-semibold text-sm">최근 ${d.trend.years.length}년 전국 1:1 종합 비교표</summary>
         <div class="mt-3">${trendTable(d.trend)}</div>
       </details>`;
   }
 
   el.innerHTML = `
     <div class="rounded-2xl bg-brand-tint border border-brand-line p-3 text-sm">
-      📌 <b>${esc(d.farm.name)}</b> <span class="text-muted">(조합원번호 ${esc(d.farm.code || "미등록")}, ${esc(d.farm.region || "지역 미입력")})</span>
+      <b>${esc(d.farm.name)}</b> <span class="text-muted">(조합원번호 ${esc(d.farm.code || "미등록")}, ${esc(d.farm.region || "지역 미입력")})</span>
     </div>
     ${d.alert ? `<div class="mt-3">${alertCard(d.alert)}</div>` : ""}
     <details id="sh-input" class="mt-3 rounded-2xl bg-white border border-line p-4" ${(filters.inputOpen ?? farm.shipments === 0) ? "open" : ""}>
-      <summary class="cursor-pointer font-semibold">➕ 출하성적 입력 <span class="text-sm font-normal text-muted">(축평원 이력번호 조회 · 엑셀 업로드)</span></summary>
+      <summary class="cursor-pointer font-semibold">출하성적 입력 <span class="text-sm font-normal text-muted">(축평원 이력번호 조회 · 엑셀 업로드)</span></summary>
       <div id="sh-input-box" class="mt-3"></div>
     </details>
 
@@ -136,7 +136,7 @@ export async function renderShipment(el, { farm, farms, onPickFarm, onSaved = as
       <div class="inline-flex rounded-xl border border-line overflow-hidden text-sm" role="group" aria-label="성별">${seg("", "전체")}${seg("거세", "거세")}${seg("암", "암")}</div>
     </div>
     ${body}
-    <h3 class="text-base font-bold mt-6 mb-2">📑 개체별 출하 성적표 <span class="text-sm font-normal text-muted">(${esc(yearCaption)}, 총 ${num(d.records.length)}두)</span></h3>
+    <h3 class="text-base font-bold mt-6 mb-2">개체별 출하 성적표 <span class="text-sm font-normal text-muted">(${esc(yearCaption)}, 총 ${num(d.records.length)}두)</span></h3>
     <div id="sh-records"></div>`;
 
   // ---- 동작 연결 ----

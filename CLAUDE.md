@@ -4,6 +4,8 @@
 > 아래 설명 중 Streamlit·`streamlit_app.py`·Streamlit Community Cloud 이야기는 **옛 앱 기준의 기록**이다. 옛 앱의 실행 가능한 전체는 git 태그 `legacy-streamlit` 에 있고,
 > `streamlit_app.py` 는 `tests/legacy_snapshot/streamlit_app_legacy.py`(규칙 비교 시험 전용, 실행하지 않음)로 옮겼다. 서버에서도 `consulting` 컨테이너를 내렸다(`/opt/hanwoo/deploy/*.bak-20261015-*` 에 이전 설정).
 
+> **2026-11-01 화면 디자인**: `web/` 의 색·글꼴·모서리는 한우 업무 시스템 공통 기준(`../시험농장/DESIGN.md`, `hanwoo-portal/theme/hanwoo-theme.css`)을 따른다 — 중립 회색 바탕·잉크색 단추·IBM Plex Sans KR, 장부 녹색(`accent`)은 데이터·고른 표시에만, 모서리 6px/4px(`web/index.html` 의 `@theme` 토큰), **이모지 쓰지 않음**. 인쇄 창(`web/print_compare.js`)의 색은 인쇄물이라 그대로.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Overview
