@@ -77,13 +77,13 @@ function field(f, v) {
   }
 }
 
-// 사료급여 표(5단계 × 배합사료·조사료·첨가제)는 휴대폰에서 넓어서 단계마다 카드로 나눈다
+// 사료급여 표(5단계 × 배합사료·조사료·첨가제): 단계마다 카드 하나, 넓은 화면에서는 카드 안에서 세 품목을 옆으로 나란히
 function feedCards(m) {
   const items = ["배합사료", "조사료", "첨가제"];
   return `<div><span class="block text-sm text-muted mb-2">단계별 사료 품목 · 급여수준</span><div class="space-y-3">${FORM.feed.stages.map((stage) => `
     <div class="rounded-xl border border-line p-3">
       <div class="font-semibold text-sm mb-2">${esc(stage)}</div>
-      <div class="space-y-3">${items.map((it) => `
+      <div class="grid gap-3 lg:grid-cols-3">${items.map((it) => `
         <div>
           <span class="block text-xs font-semibold text-muted mb-1">${it}</span>
           <input data-feed="${esc(stage)}" data-row="${it} 품목" class="${inputCls} text-sm" value="${esc(m[stage][`${it} 품목`])}" placeholder="${it} 품목" aria-label="${esc(stage)} ${it} 품목" maxlength="100">
@@ -118,11 +118,11 @@ function listView(d) {
   return `
     <div class="rounded-2xl bg-brand-tint border border-brand-line p-3 text-sm"><b>${esc(d.farm.name)}</b> <span class="text-muted">(조합원번호 ${esc(d.farm.code || "미등록")}, ${esc(d.farm.region || "지역 미입력")})</span></div>
     ${draftCard(d)}
-    <button id="sv-new" class="${btn} w-full mt-3 bg-brand text-white">＋ 새 방문조사 작성 (${num(next)}차)${hasNewDraft ? " — 임시 저장본 이어서" : ""}</button>
+    <button id="sv-new" class="${btn} w-full sm:w-auto mt-3 bg-brand text-white">＋ 새 방문조사 작성 (${num(next)}차)${hasNewDraft ? " — 임시 저장본 이어서" : ""}</button>
     <details class="mt-3 rounded-2xl bg-white border border-line p-4">
       <summary class="cursor-pointer text-sm font-semibold">종이 조사표로 현장에서 적고 나중에 입력하기</summary>
       <p class="text-xs text-muted mt-2">A4 로 인쇄해 손으로 적은 뒤, 위 '새 방문조사 작성'에 같은 순서로 옮겨 입력하세요. ${esc(d.farm.name)} 농가의 이름·번호·지역은 미리 적혀 나옵니다.</p>
-      <div class="grid grid-cols-2 gap-2 mt-3">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-3">
         <a class="${btn} text-center border border-line bg-white" href="/api/surveys/sheet?farm_id=${d.farm.id}&inline=1" target="_blank" rel="noopener">인쇄용 열기 (${esc(d.farm.name)})</a>
         <a class="${btn} text-center border border-line bg-white" href="/api/surveys/sheet?farm_id=${d.farm.id}">파일로 내려받기</a>
         <a class="${btn} text-center border border-line bg-white" href="/api/surveys/sheet?inline=1" target="_blank" rel="noopener">빈 양식 열기</a>
@@ -130,8 +130,8 @@ function listView(d) {
       </div>
     </details>
     <h3 class="text-base font-bold mt-5 mb-2">방문 기록 <span class="text-sm font-normal text-muted">${num(d.visits.length)}회</span></h3>
-    ${d.visits.length ? `<div class="space-y-2">${d.visits.slice().reverse().map((v) => `
-      <button data-visit="${v.id}" class="open w-full text-left rounded-2xl bg-white border border-line p-4 active:bg-panel">
+    ${d.visits.length ? `<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">${d.visits.slice().reverse().map((v) => `
+      <button data-visit="${v.id}" class="open w-full text-left rounded-2xl bg-white border border-line p-4 hover:bg-panel active:bg-panel">
         <div class="flex items-center justify-between gap-2"><span class="font-semibold">${num(v.visit_number)}차 방문</span><span class="text-sm text-muted kpi-value">${esc(v.visit_date)}</span></div>
         <div class="text-sm text-muted mt-1">${esc(v.investigator || "조사자 미입력")}${v.has_survey ? "" : " · 조사표 비어 있음"} · 눌러서 보기·고치기</div>
       </button>`).join("")}</div>`
@@ -154,7 +154,7 @@ function formView(farm) {
         <details class="rounded-2xl bg-white border border-line p-4" ${s.open ? "open" : ""}>
           <summary class="cursor-pointer font-semibold">${esc(s.title)}</summary>
           ${i === 1 ? '<p class="text-xs text-muted mt-2">지역을 바꾸면 그 지역의 2025년 날씨로 다시 채워집니다.</p>' : ""}
-          <div class="mt-3 grid gap-4 ${s.fields.some((f) => f.kind === "feed" || f.kind === "textarea") ? "" : "sm:grid-cols-2"}">${s.fields.map((f) => field(f, st.values[f.key])).join("")}</div>
+          <div class="mt-3 grid gap-4 ${s.fields.some((f) => f.kind === "feed" || f.kind === "textarea") ? "" : "sm:grid-cols-2 lg:grid-cols-3"}">${s.fields.map((f) => field(f, st.values[f.key])).join("")}</div>
         </details>`).join("")}
       <div class="savebar z-10 rounded-2xl bg-white/95 border border-line p-3 shadow-lg">
         <button id="sv-save" type="submit" class="${btn} w-full bg-brand text-white">${st.meta ? "고친 내용 저장" : "방문조사 저장"}</button>
@@ -259,16 +259,16 @@ function bindForm(el, farm, rerender) {
 export async function renderSurvey(el, { farm, farms, onPickFarm, onSaved = async () => {}, isCurrent = () => true }) {
   if (!farm) {
     el.innerHTML = card(`<h2 class="text-lg font-bold mb-1">2단계 · 현장방문조사</h2>
-      <p class="text-sm text-muted mb-3">먼저 조사할 농가를 고르세요. (위쪽 목록에서 골라도 됩니다)</p>
+      <p class="text-sm text-muted mb-3">먼저 조사할 농가를 고르세요. (농가 목록에서 골라도 됩니다)</p>
       <div class="mb-4 rounded-xl border border-line bg-panel p-3">
         <p class="text-sm font-semibold mb-2">종이 조사표 (농가를 고르지 않고 빈 양식)</p>
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-2 gap-2 sm:max-w-md">
           <a class="rounded-xl border border-line bg-white px-3 py-2 min-h-[44px] flex items-center justify-center text-sm font-semibold" href="/api/surveys/sheet">빈 양식 내려받기</a>
           <a class="rounded-xl border border-line bg-white px-3 py-2 min-h-[44px] flex items-center justify-center text-sm font-semibold" href="/api/surveys/sheet?inline=1" target="_blank" rel="noopener">빈 양식 열어 인쇄</a>
         </div>
       </div>
-      <div class="space-y-2">${farms.map((f) => `
-        <button data-farm="${f.id}" class="pick w-full text-left rounded-xl border border-line bg-white p-3 active:bg-panel">
+      <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">${farms.map((f) => `
+        <button data-farm="${f.id}" class="pick w-full text-left rounded-xl border border-line bg-white p-3 hover:bg-panel active:bg-panel">
           <span class="font-semibold">${esc(f.name)}</span><span class="text-xs text-muted ml-2">${esc(f.region)} · 방문 ${num(f.visits)}회</span></button>`).join("")}</div>`);
     el.querySelectorAll(".pick").forEach((b) => b.addEventListener("click", () => onPickFarm(b.dataset.farm)));
     return;

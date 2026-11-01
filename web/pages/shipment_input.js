@@ -215,7 +215,7 @@ export function renderInput(box, { farm, onSaved }) {
   };
   const tabBtn = (id, label) => `<button data-tab="${id}" class="itab flex-1 px-3 py-2 min-h-[44px] ${id === "excel" ? "border-l border-line" : ""} ${st.tab === id ? "bg-brand text-white font-semibold" : "bg-white text-muted"}" aria-pressed="${st.tab === id}">${label}</button>`;
   box.innerHTML = `
-    <p class="text-sm mb-3">저장하는 성적은 <b>${esc(farm.name)}</b> 농가로 들어갑니다. 다른 농가라면 위쪽 농가 선택을 먼저 바꿔주세요.</p>
+    <p class="text-sm mb-3">저장하는 성적은 <b>${esc(farm.name)}</b> 농가로 들어갑니다. 다른 농가라면 농가 선택을 먼저 바꿔주세요.</p>
     <div class="flex rounded-xl border border-line overflow-hidden text-sm mb-3" role="group" aria-label="입력 방식">${tabBtn("api", "축평원 조회")}${tabBtn("excel", "엑셀 업로드")}</div>
     <div id="itab-body">${st.tab === "api" ? apiTab(farm) : excelTab(farm)}</div>`;
   box.querySelectorAll(".itab").forEach((b) => b.addEventListener("click", () => { st.tab = b.dataset.tab; redraw(); }));

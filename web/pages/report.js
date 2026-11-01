@@ -36,7 +36,7 @@ function makeButtons(d) {
 function reportList(d) {
   if (!d.reports.length) return card('<p class="text-sm text-muted">저장된 리포트가 없습니다.</p>');
   return `<div class="space-y-2">${d.reports.map((r) => `
-    <button data-report="${r.id}" class="openrep w-full text-left rounded-2xl bg-white border ${st.openId === r.id ? "border-brand" : "border-line"} p-4 active:bg-panel">
+    <button data-report="${r.id}" class="openrep w-full text-left rounded-2xl bg-white border ${st.openId === r.id ? "border-brand" : "border-line"} p-4 hover:bg-panel active:bg-panel">
       <div class="flex items-center justify-between gap-2"><span class="font-semibold">${num(r.visit_number)}차 방문 · ${r.mode === "전문" ? "전문" : "일반"}</span><span class="text-xs text-muted">${num(r.length)}자</span></div>
       <div class="text-sm text-muted mt-1">${kst(r.created_at)} 만듦 · 눌러서 보기</div>
     </button>`).join("")}</div>`;
@@ -164,9 +164,9 @@ export async function renderReport(el, ctx) {
   stopPolling();
   if (!farm) {
     el.innerHTML = card(`<h2 class="text-lg font-bold mb-1">3단계 · AI 리포트</h2>
-      <p class="text-sm text-muted mb-3">먼저 리포트를 만들 농가를 고르세요. (위쪽 목록에서 골라도 됩니다)</p>
-      <div class="space-y-2">${farms.map((f) => `
-        <button data-farm="${f.id}" class="pick w-full text-left rounded-xl border border-line bg-white p-3 active:bg-panel">
+      <p class="text-sm text-muted mb-3">먼저 리포트를 만들 농가를 고르세요. (농가 목록에서 골라도 됩니다)</p>
+      <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">${farms.map((f) => `
+        <button data-farm="${f.id}" class="pick w-full text-left rounded-xl border border-line bg-white p-3 hover:bg-panel active:bg-panel">
           <span class="font-semibold">${esc(f.name)}</span><span class="text-xs text-muted ml-2">방문 ${num(f.visits)}회 · 출하성적 ${num(f.shipments)}두</span></button>`).join("")}</div>`);
     el.querySelectorAll(".pick").forEach((b) => b.addEventListener("click", () => onPickFarm(b.dataset.farm)));
     return;
@@ -185,9 +185,14 @@ export async function renderReport(el, ctx) {
     <h3 class="text-base font-bold mt-5 mb-2">리포트 만들기</h3>
     <div id="rp-job" class="mb-3"></div>
     <div id="rp-make">${d.running_job ? "" : makeButtons(d)}</div>
-    <h3 class="text-base font-bold mt-6 mb-2">저장된 리포트</h3>
-    ${reportList(d)}
-    <div id="rp-view" class="mt-4"></div>`;
+    <!-- 넓은 화면: 왼쪽 저장된 리포트 목록, 오른쪽 본문 (본문 줄 길이는 읽기 좋게 제한) -->
+    <div class="mt-6 lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-5 lg:items-start">
+      <div class="lg:sticky lg:top-4">
+        <h3 class="text-base font-bold mb-2">저장된 리포트</h3>
+        ${reportList(d)}
+      </div>
+      <div id="rp-view" class="mt-4 lg:mt-0 min-w-0 max-w-[900px]"></div>
+    </div>`;
 
   if (d.running_job) follow(el, d.running_job, ctx);
 
@@ -206,7 +211,10 @@ export async function renderReport(el, ctx) {
   el.querySelectorAll(".openrep").forEach((b) => b.addEventListener("click", async () => {
     st.openId = Number(b.dataset.report);
     el.querySelectorAll(".openrep").forEach((x) => x.classList.toggle("border-brand", x === b));
-    try { await showReport(el.querySelector("#rp-view"), st.openId); el.querySelector("#rp-view").scrollIntoView({ behavior: "smooth" }); }
+    try {
+      await showReport(el.querySelector("#rp-view"), st.openId);
+      if (!matchMedia("(min-width: 1024px)").matches) el.querySelector("#rp-view").scrollIntoView({ behavior: "smooth" });   // 옆에 나오는 넓은 화면은 그대로
+    }
     catch (e) { flash(errBox(e.message)); }
   }));
   if (st.openId) showReport(el.querySelector("#rp-view"), st.openId).catch((e) => { el.querySelector("#rp-view").innerHTML = errBox(e.message); });

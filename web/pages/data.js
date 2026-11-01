@@ -1,5 +1,5 @@
 // 데이터 관리 · 백업 — 표 미리보기, CSV·DB 파일 내려받기, 신규 농가 등록.
-// 범위는 위쪽 농가 선택을 따른다 ('전체 농가'면 전부). 열·파일 이름은 기존 앱과 같다.
+// 범위는 농가 선택을 따른다 ('전체 농가'면 전부). 열·파일 이름은 기존 앱과 같다.
 import { api, card, esc, flash, num, table } from "../api.js";
 
 const btn = "rounded-xl px-4 py-3 min-h-[48px] text-sm font-semibold disabled:opacity-50";
@@ -10,8 +10,8 @@ const MEMBER = ["조합원", "비조합원"];
 const form = { code: "", name: "", owner: "", region: "", breeding_type: "비육우", total_heads: 100, member_type: "조합원", open: false };
 
 function stat(label, value, unit) {
-  return `<div class="rounded-2xl bg-white border border-line p-4"><div class="text-sm text-muted">${esc(label)}</div>
-    <div class="kpi-value text-2xl font-bold mt-1">${num(value)} <span class="text-base font-semibold">${esc(unit)}</span></div></div>`;
+  return `<div class="bg-white px-4 py-3"><div class="text-xs text-muted">${esc(label)}</div>
+    <div class="kpi-value text-[26px] leading-tight font-semibold mt-1">${num(value)} <span class="text-base font-medium">${esc(unit)}</span></div></div>`;
 }
 
 function newFarmForm() {
@@ -19,8 +19,8 @@ function newFarmForm() {
   return `
     <details id="nf" class="rounded-2xl bg-white border border-line p-4" ${form.open ? "open" : ""}>
       <summary class="cursor-pointer font-semibold">신규 농가 등록</summary>
-      <form id="nf-form" class="mt-3 grid gap-3 sm:grid-cols-2" novalidate>
-        <div class="sm:col-span-2"><label class="block text-sm text-muted mb-1" for="nf-member">구분</label>
+      <form id="nf-form" class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" novalidate>
+        <div class="sm:col-span-2 lg:col-span-3 lg:max-w-xs"><label class="block text-sm text-muted mb-1" for="nf-member">구분</label>
           <select id="nf-member" data-k="member_type" class="${inputCls}">${MEMBER.map((m) => `<option ${form.member_type === m ? "selected" : ""}>${m}</option>`).join("")}</select></div>
         <div><label class="block text-sm text-muted mb-1" for="nf-name">농가명 *</label><input id="nf-name" data-k="name" class="${inputCls}" value="${esc(form.name)}" placeholder="예: 한우사랑농장" maxlength="60" required></div>
         <div><label class="block text-sm text-muted mb-1" for="nf-code">${form.member_type === "비조합원" ? "관리 번호 (선택)" : "조합원 번호"}</label><input id="nf-code" data-k="code" class="${inputCls}" value="${esc(form.code)}" placeholder="비우면 자동으로 붙습니다" maxlength="30"></div>
@@ -28,8 +28,8 @@ function newFarmForm() {
         <div><label class="block text-sm text-muted mb-1" for="nf-region">지역</label><input id="nf-region" data-k="region" class="${inputCls}" value="${esc(form.region)}" placeholder="예: 경북 영천" maxlength="30"></div>
         <div><span class="block text-sm text-muted mb-1">사육형태</span><div class="flex flex-wrap gap-2">${seg}</div></div>
         <div><label class="block text-sm text-muted mb-1" for="nf-heads">사육두수</label><input id="nf-heads" data-k="total_heads" type="number" inputmode="numeric" min="0" class="${inputCls} kpi-value" value="${form.total_heads}"></div>
-        <div id="nf-dup" class="sm:col-span-2"></div>
-        <button id="nf-save" type="submit" class="${btn} sm:col-span-2 bg-brand text-white">신규 농가 저장</button>
+        <div id="nf-dup" class="sm:col-span-2 lg:col-span-3"></div>
+        <button id="nf-save" type="submit" class="${btn} sm:col-span-2 lg:col-span-3 lg:justify-self-start lg:px-8 bg-brand text-white">신규 농가 저장</button>
       </form>
     </details>`;
 }
@@ -50,7 +50,7 @@ function bindNewFarm(el, ctx) {
       el.querySelector("#nf-dup").innerHTML = dup ? `
         <div class="rounded-xl border border-neg/40 bg-[#FBEDE8] p-3 text-sm text-neg">
           이미 등록된 농가와 일치합니다 — <b>${esc(dup.name)}</b> (${esc(dup.owner || "대표자 미입력")}, ${esc(dup.region || "지역 미입력")}, 조합원번호 ${esc(dup.code || "미입력")}).
-          <div class="mt-1">같은 농가라면 새로 등록하지 말고 위쪽 농가 선택에서 고르세요. 새로 저장하면 출하성적과 조사표가 서로 다른 농가로 쪼개집니다.</div>
+          <div class="mt-1">같은 농가라면 새로 등록하지 말고 농가 선택에서 고르세요. 새로 저장하면 출하성적과 조사표가 서로 다른 농가로 쪼개집니다.</div>
           <label class="flex items-center gap-2 mt-2"><input id="nf-confirm" type="checkbox" class="h-5 w-5"> 그래도 별개의 새 농가로 등록합니다</label>
         </div>` : "";
     }, 300);
@@ -114,9 +114,9 @@ export async function renderData(el, ctx) {
 
   el.innerHTML = `
     <h2 class="text-xl font-bold">데이터 관리 · 백업</h2>
-    <p class="text-sm text-muted mt-1">범위: ${scope} — 위쪽 농가 선택에서 '전체 농가'를 고르면 모든 농가를 봅니다.</p>
+    <p class="text-sm text-muted mt-1">범위: ${scope} — 농가 선택에서 '전체 농가'를 고르면 모든 농가를 봅니다.</p>
     <div class="mt-4">${newFarmForm()}</div>
-    <div class="grid grid-cols-2 gap-3 mt-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-px bg-line rounded-xl border border-line overflow-hidden mt-4">
       ${stat("농가", d.farms.count, "곳")}${stat("출하성적", d.shipments.count, "두")}
       ${stat("현장 방문", d.visits.count, "회")}${stat("AI 리포트", d.reports.count, "개")}
     </div>

@@ -3,14 +3,16 @@
 import { api, card, esc, num, table } from "../api.js";
 import { barChart, C, destroyCharts, fmt1, keep, lineChart } from "../charts.js";
 
-const GENDER_COLOR = { 거세: C.farm, 암: C.cow, 수: C.bull };
+const GENDER_COLOR = { 거세: C.steer, 암: C.cow, 수: C.bull };
 
-function kpi(label, value, sub = "", subTone = "", span = "") {
-  return `<div class="rounded-2xl bg-white border border-line p-4 ${span}">
-    <div class="text-sm text-muted">${esc(label)}</div>
-    <div class="kpi-value text-2xl font-bold mt-1">${esc(value)}</div>
+// 요약 숫자: 칸마다 카드를 따로 두지 않고, 한 상자를 선으로 나눈 한 줄로 (시험농장 DESIGN.md 2절)
+function kpi(label, value, sub = "", subTone = "") {
+  return `<div class="bg-white px-4 py-3">
+    <div class="text-xs text-muted">${esc(label)}</div>
+    <div class="kpi-value text-[26px] leading-tight font-semibold mt-1">${esc(value)}</div>
     ${sub ? `<div class="text-xs mt-1 ${subTone || "text-muted"}">${sub}</div>` : ""}</div>`;
 }
+const kpiRow = (cols, cells) => `<div class="grid ${cols} gap-px bg-line rounded-xl border border-line overflow-hidden">${cells}</div>`;
 
 // 1+이상 출현율 카드: 전국(작년) 대비 격차를 색으로 보여 준다 (+는 초록, -는 빨강)
 function onePlusCard(label, o) {
@@ -68,18 +70,16 @@ export async function renderDashboard(el, ctx) {
 
   const list = (names) => (names.length ? names.map(esc).join(", ") : "해당 농가 없음");
   el.innerHTML = `
-    <h2 class="text-xl font-bold mb-3">종합 현황 대시보드</h2>
-    <div id="member-seg" class="inline-flex rounded-xl border border-line overflow-hidden text-sm mb-3" role="group" aria-label="농가 구분">
-      ${MEMBERS.map((m, i) => `<button data-m="${m}" aria-pressed="${m === member}" class="px-4 py-2 min-h-[44px] ${i ? "border-l border-line" : ""} ${m === member ? "bg-brand text-white font-semibold" : "bg-white text-muted"}">${m}</button>`).join("")}
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+      <h2 class="text-xl font-semibold">종합 현황 대시보드</h2>
+      <div id="member-seg" class="inline-flex rounded-xl border border-line overflow-hidden text-sm" role="group" aria-label="농가 구분">
+        ${MEMBERS.map((m, i) => `<button data-m="${m}" aria-pressed="${m === member}" class="px-4 py-2 min-h-[44px] ${i ? "border-l border-line" : ""} ${m === member ? "bg-brand text-white font-semibold" : "bg-white text-muted"}">${m}</button>`).join("")}
+      </div>
     </div>
-    <div class="grid grid-cols-2 gap-3">
-      ${kpi("총 관리 농가 수", `${num(k.farms)} 농가`)}
-      ${kpi("누적 현장 방문 횟수", `${num(k.visits)} 회`)}
-      ${kpi("누적 분석 출하 두수", `${num(k.shipments)} 두`, "", "", "col-span-2")}
-      ${onePlusCard("거세우 1+이상 출현율", k.steer_1plus)}
-      ${onePlusCard("암소 1+이상 출현율", k.cow_1plus)}
-      ${kpi("출하성적만 있는 농가", `${num(k.missing_survey.length)} 농가`, "조사표 미작성")}
-      ${kpi("조사표만 있는 농가", `${num(k.missing_shipment.length)} 농가`, "출하성적 미수집")}
+    <div class="space-y-3">
+      ${kpiRow("sm:grid-cols-3", kpi("총 관리 농가 수", `${num(k.farms)} 농가`) + kpi("누적 현장 방문 횟수", `${num(k.visits)} 회`) + kpi("누적 분석 출하 두수", `${num(k.shipments)} 두`))}
+      ${kpiRow("grid-cols-2 lg:grid-cols-4", onePlusCard("거세우 1+이상 출현율", k.steer_1plus) + onePlusCard("암소 1+이상 출현율", k.cow_1plus)
+        + kpi("출하성적만 있는 농가", `${num(k.missing_survey.length)} 농가`, "조사표 미작성") + kpi("조사표만 있는 농가", `${num(k.missing_shipment.length)} 농가`, "출하성적 미수집"))}
     </div>
     <details class="mt-3 rounded-2xl bg-white border border-line p-4">
       <summary class="cursor-pointer font-semibold text-sm">누락 데이터 보유 농가 명단</summary>
@@ -99,23 +99,25 @@ export async function renderDashboard(el, ctx) {
     </div>
     ${card(`
       <label class="block text-sm text-muted mb-1" for="trend-metric">비교 지표</label>
-      <select id="trend-metric" class="w-full rounded-xl border border-line bg-white px-3 py-2 mb-3">
+      <select id="trend-metric" class="w-full sm:w-72 rounded-xl border border-line bg-white px-3 py-2 mb-3">
         ${d.trend.metrics.map((m) => `<option value="${m.key}">${esc(m.label)}</option>`).join("")}</select>
-      <div class="relative" style="height:260px"><canvas id="trend-chart" aria-label="연도별 성적 추이 차트" role="img"></canvas></div>`)}
+      <div class="relative" style="height:300px"><canvas id="trend-chart" aria-label="연도별 성적 추이 차트" role="img"></canvas></div>`)}
     <h3 class="text-base font-bold mt-5 mb-2">연도별 전체 집계표</h3>
     <div id="yearly-table"></div>
 
     <h3 class="text-base font-bold mt-6 mb-2">거세우 vs 암소 전체 누적 평균 비교</h3>
-    <div id="compare-table" class="mb-3"></div>
-    ${card(`
-      <label class="block text-sm text-muted mb-1" for="cmp-metric">비교 지표</label>
-      <select id="cmp-metric" class="w-full rounded-xl border border-line bg-white px-3 py-2 mb-3">
-        ${COMPARE_METRICS.map(([key, label]) => `<option value="${key}">${esc(label)}</option>`).join("")}</select>
-      <div class="relative" style="height:220px"><canvas id="cmp-chart" aria-label="거세우와 암소 비교 차트" role="img"></canvas></div>`)}
+    <div class="grid gap-3 xl:grid-cols-[3fr_2fr] items-start">
+      <div id="compare-table" class="min-w-0"></div>
+      ${card(`
+        <label class="block text-sm text-muted mb-1" for="cmp-metric">비교 지표</label>
+        <select id="cmp-metric" class="w-full sm:w-72 rounded-xl border border-line bg-white px-3 py-2 mb-3">
+          ${COMPARE_METRICS.map(([key, label]) => `<option value="${key}">${esc(label)}</option>`).join("")}</select>
+        <div class="relative" style="height:220px"><canvas id="cmp-chart" aria-label="거세우와 암소 비교 차트" role="img"></canvas></div>`)}
+    </div>
 
     <h3 class="text-base font-bold mt-6 mb-2">농가 목록</h3>
-    <div class="space-y-2">${farms.filter((f) => member === "전체" || f.member_type === member).map((f) => `
-      <button data-farm="${f.id}" class="farm-card w-full text-left rounded-2xl bg-white border ${f.id === farmId ? "border-brand" : "border-line"} p-4 active:bg-panel">
+    <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">${farms.filter((f) => member === "전체" || f.member_type === member).map((f) => `
+      <button data-farm="${f.id}" class="farm-card w-full text-left rounded-2xl bg-white border ${f.id === farmId ? "border-brand" : "border-line"} p-4 hover:bg-panel active:bg-panel">
         <div class="flex items-center justify-between gap-2"><span class="font-semibold truncate">${esc(f.name)}${f.member_type === "비조합원" ? ' <span class="text-xs font-normal text-muted border border-line rounded px-1">비조합원</span>' : ""}</span><span class="text-xs text-muted shrink-0">${esc(f.region)}</span></div>
         <div class="text-sm text-muted mt-1">방문 ${num(f.visits)}회 · 출하성적 ${num(f.shipments)}두</div></button>`).join("")}</div>`;
 

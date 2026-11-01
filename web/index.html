@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#FFFFFF">
   <title>한우 스마트 컨설팅 시스템</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -39,48 +39,74 @@
 </head>
 <body class="bg-page text-ink font-sans antialiased">
 
+  <!-- 공통 머리글: 다른 시스템 바로가기 (시험농장 앱과 같은 모양) -->
+  <header class="bg-white border-b border-line">
+    <div class="max-w-[1440px] mx-auto px-4 h-12 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="w-7 h-7 shrink-0 rounded-md bg-brand text-white text-sm font-semibold grid place-items-center" aria-hidden="true">컨</span>
+        <a class="text-sm text-muted hover:text-ink hidden sm:inline" href="https://bst-dc.github.io/hanwoo-portal/" target="_blank" rel="noopener noreferrer">한우 업무 포털</a>
+        <span class="text-[#A8ADAC] hidden sm:inline" aria-hidden="true">/</span>
+        <span class="text-sm font-semibold truncate">스마트컨설팅</span>
+      </div>
+      <div class="flex items-center gap-1 text-sm">
+        <nav class="flex items-center gap-1" aria-label="다른 시스템">
+          <a class="px-2 py-1 rounded hover:bg-panel" href="https://testfarm.3-38-225-111.sslip.io/" target="_blank" rel="noopener noreferrer">시험농장</a>
+          <a class="px-2 py-1 rounded bg-brand-tint text-brand font-semibold" aria-current="page" href="#">스마트컨설팅</a>
+          <a class="px-2 py-1 rounded hover:bg-panel hidden sm:inline" href="https://bst-dc.github.io/hanwoo-portal/market/" target="_blank" rel="noopener noreferrer">시세전망</a>
+        </nav>
+        <button id="logout" class="hidden ml-2 rounded-lg border border-line bg-white px-3 py-1 hover:bg-panel">로그아웃</button>
+      </div>
+    </div>
+  </header>
+
   <!-- 로그인 -->
-  <section id="login" class="hidden max-w-sm mx-auto mt-16 px-5">
+  <section id="login" class="hidden max-w-sm mx-auto mt-24 px-4">
     <h1 class="text-2xl font-semibold font-serif mb-1">한우 스마트 컨설팅</h1>
     <p class="text-sm text-muted mb-6">대구축협 지도컨설팅 직원 전용입니다. 접속 비밀번호를 입력하세요.</p>
     <form id="login-form" class="space-y-3">
       <label class="block text-sm font-medium" for="login-pw">접속 비밀번호</label>
       <input id="login-pw" type="password" autocomplete="current-password" required
-             class="w-full rounded-xl border border-line bg-white px-4 py-3 text-base focus:outline-2 focus:outline-brand">
+             class="w-full rounded-lg border border-line bg-white px-3 py-2 focus:outline-2 focus:outline-brand">
       <p id="login-error" class="hidden text-sm text-neg" role="alert"></p>
-      <button class="w-full rounded-xl bg-brand text-white py-3 text-base font-semibold active:opacity-80">들어가기</button>
+      <button class="w-full rounded-lg bg-brand text-white py-2 font-semibold hover:bg-brand-dark">들어가기</button>
     </form>
   </section>
 
-  <!-- 본 화면: 위 머리글 + 가운데 내용 + 아래 메뉴 -->
+  <!-- 본 화면 (2026-11-01, 13인치 패드·PC 기준 — 시험농장·이상농가 분석앱과 같은 뼈대)
+       1280px 이상(패드 가로·PC): 왼쪽 사이드바에 농가 목록을 늘 펼쳐 두고, 오른쪽 본문 위에 메뉴 탭.
+       그보다 좁으면(패드 세로 1024px·폰): 사이드바를 위쪽 한 줄(앱 이름 + 농가 선택 단추)로 올려 본문 표가 폭을 다 쓴다. -->
   <div id="app" class="hidden">
-    <header class="app-header sticky top-0 z-20 bg-white border-b border-line">
-      <div class="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
-        <span class="w-8 h-8 shrink-0 rounded-md bg-brand text-white text-sm font-semibold grid place-items-center" aria-hidden="true">컨</span>
-        <div id="farm-picker" class="relative flex-1 min-w-0">
+    <div class="max-w-[1440px] mx-auto px-4 py-4 flex flex-col gap-3 xl:flex-row xl:gap-6">
+      <aside class="flex flex-col gap-3 md:flex-row md:items-center xl:flex-col xl:items-stretch xl:w-72 xl:shrink-0 xl:sticky xl:top-4 xl:self-start xl:h-[calc(100dvh-5rem)]">
+        <div class="px-1 md:shrink-0">
+          <div class="font-semibold font-serif text-lg leading-tight">한우 스마트 컨설팅</div>
+          <div class="text-xs text-muted">대구축협 지도컨설팅</div>
+        </div>
+        <div id="farm-picker" class="relative md:flex-1 md:max-w-md xl:max-w-none xl:flex xl:flex-col xl:min-h-0">
           <button id="farm-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="컨설팅 농가 선택"
-                  class="w-full flex items-center justify-between gap-2 rounded-xl border border-line bg-white px-3 py-2 text-base font-semibold text-left focus:outline-2 focus:outline-brand">
+                  class="xl:hidden w-full flex items-center justify-between gap-2 rounded-lg border border-line bg-white px-3 py-2 font-semibold text-left focus:outline-2 focus:outline-brand">
             <span id="farm-btn-label" class="truncate">전체 농가</span><span aria-hidden="true" class="text-muted">▾</span></button>
-          <div id="farm-panel" class="hidden absolute left-0 right-0 top-full mt-1 z-30 rounded-2xl border border-line bg-white shadow-lg p-2">
+          <!-- 1280px 이상에서는 늘 펼친 목록, 그보다 좁으면 단추를 눌러 여는 떠 있는 상자 -->
+          <div id="farm-panel" class="hidden absolute left-0 right-0 top-full mt-1 z-30 rounded-xl border border-line bg-white shadow-lg p-2
+                                      xl:flex xl:flex-col xl:static xl:mt-0 xl:min-h-0 xl:flex-1 xl:shadow-none xl:p-0 xl:border-0 xl:bg-transparent">
+            <div class="hidden xl:block px-1 pb-2 text-xs font-semibold text-muted">농가 선택</div>
+            <div id="farm-scope" class="flex mb-2 rounded-lg border border-line overflow-hidden" role="group" aria-label="농가 구분"></div>
             <label class="sr-only" for="farm-search">농가 검색</label>
             <input id="farm-search" type="search" autocomplete="off" placeholder="농가명·대표자·지역 검색"
-                   class="w-full rounded-xl border border-line bg-white px-3 py-2 text-base focus:outline-2 focus:outline-brand">
-            <div id="farm-scope" class="flex gap-2 mt-2" role="group" aria-label="농가 구분"></div>
-            <div id="farm-list" class="max-h-[55vh] overflow-y-auto mt-2" role="listbox" aria-label="농가 목록"></div>
+                   class="w-full rounded-md border border-line bg-white px-3 py-2 focus:outline-2 focus:outline-brand">
+            <div id="farm-list" class="max-h-[55vh] xl:max-h-none xl:flex-1 xl:min-h-0 overflow-y-auto mt-2" role="listbox" aria-label="농가 목록"></div>
           </div>
         </div>
-        <button id="logout" class="hidden shrink-0 rounded-xl border border-line bg-white px-3 py-2 text-sm active:bg-panel">로그아웃</button>
-      </div>
-    </header>
+      </aside>
 
-    <main class="max-w-3xl mx-auto px-4 pt-4 pb-28"><div id="flash"></div><div id="page"></div></main>
-
-    <nav id="tabbar" class="tabbar fixed bottom-0 inset-x-0 z-20 bg-white border-t border-line" aria-label="메뉴">
-      <div class="max-w-3xl mx-auto grid grid-cols-5"></div>
-    </nav>
+      <main class="flex-1 min-w-0">
+        <nav id="tabs" class="flex overflow-x-auto gap-1 border-b border-line mb-4" role="tablist" aria-label="메뉴"></nav>
+        <div id="flash"></div><div id="page"></div>
+      </main>
+    </div>
   </div>
 
-  <div id="toast" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-30 rounded-lg bg-ink text-white px-4 py-2 text-sm shadow-lg"></div>
+  <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-30 rounded-lg bg-ink text-white px-4 py-2 text-sm shadow-lg"></div>
 
   <script type="module" src="app.js"></script>
 </body>

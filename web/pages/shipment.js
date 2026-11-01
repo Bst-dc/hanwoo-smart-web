@@ -16,12 +16,17 @@ function badge(text) {
   return `<span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${tone}">${esc(text)}</span>`;
 }
 
-function comparisonList(rows) {
-  return `<ul class="divide-y divide-line">${rows.map((r) => `
-    <li class="py-3">
-      <div class="flex items-center justify-between gap-2"><span class="font-semibold">${esc(r.item)}</span>${badge(r.diagnosis)}</div>
-      <div class="kpi-value text-sm text-muted mt-1">농가 <b class="text-ink">${esc(r.farm)}</b> · 전국 ${esc(r.national)} · 격차 <b class="${r.diff.startsWith("-") ? "text-neg" : "text-ink"}">${esc(r.diff)}</b></div>
-    </li>`).join("")}</ul>`;
+// 전국 1:1 비교: 넓은 화면이라 항목마다 한 줄 — 평가항목 · 농가 · 전국 · 격차 · 진단
+function comparisonTable(rows) {
+  const th = (t, cls = "text-right") => `<th class="py-2 px-2 ${cls} font-medium whitespace-nowrap">${t}</th>`;
+  return `<div class="table-wrap"><table class="w-full text-sm">
+    <thead><tr class="text-xs text-muted border-b border-brand-line">${th("평가항목", "text-left")}${th("농가")}${th("전국")}${th("격차")}${th("진단")}</tr></thead>
+    <tbody>${rows.map((r) => `<tr class="border-b border-line last:border-0">
+      <td class="py-2.5 px-2 font-semibold whitespace-nowrap">${esc(r.item)}</td>
+      <td class="py-2.5 px-2 text-right kpi-value font-semibold whitespace-nowrap">${esc(r.farm)}</td>
+      <td class="py-2.5 px-2 text-right kpi-value text-muted whitespace-nowrap">${esc(r.national)}</td>
+      <td class="py-2.5 px-2 text-right kpi-value font-semibold whitespace-nowrap ${r.diff.startsWith("-") ? "text-neg" : "text-ink"}">${esc(r.diff)}</td>
+      <td class="py-2.5 px-2 text-right">${badge(r.diagnosis)}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
 function profitCard(p, count) {
@@ -65,9 +70,9 @@ function alertCard(a) {
 
 function pickFarmCard(farms, onPickFarm) {
   return card(`<h2 class="text-lg font-bold mb-1">1단계 · 출하성적 비교분석</h2>
-    <p class="text-sm text-muted mb-3">먼저 컨설팅할 농가를 고르세요. (위쪽 목록에서 골라도 됩니다)</p>
-    <div class="space-y-2">${farms.map((f) => `
-      <button data-farm="${f.id}" class="pick w-full text-left rounded-xl border border-line bg-white p-3 active:bg-panel">
+    <p class="text-sm text-muted mb-3">먼저 컨설팅할 농가를 고르세요. (농가 목록에서 골라도 됩니다)</p>
+    <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">${farms.map((f) => `
+      <button data-farm="${f.id}" class="pick w-full text-left rounded-xl border border-line bg-white p-3 hover:bg-panel active:bg-panel">
         <span class="font-semibold">${esc(f.name)}</span><span class="text-xs text-muted ml-2">${esc(f.region)} · 출하성적 ${num(f.shipments)}두</span></button>`).join("")}</div>`);
 }
 
@@ -98,19 +103,23 @@ export async function renderShipment(el, { farm, farms, onPickFarm, onSaved = as
     body = `
       <h3 class="text-base font-bold mt-5 mb-1">전국 1:1 비교 <span class="text-sm font-normal text-muted">(${esc(gName)} 기준 · ${esc(cmpCaption)} · 전국 ${d.national_year}년 평균)</span></h3>
       ${d.gender_forced ? `<p class="text-xs text-muted mb-2">※ 성별 '전체'여도 전국 비교는 성별이 섞이지 않게 ${esc(gName)} 출하분만으로 계산합니다. 아래 개체별 성적표에는 전체 개체가 나옵니다.</p>` : ""}
-      ${card(comparisonList(d.comparison))}
-      <div class="grid grid-cols-2 gap-2 mt-3">
-        <button id="sh-print" class="rounded-xl border border-line bg-white px-3 py-2 min-h-[44px] text-sm font-semibold active:bg-panel">비교표 인쇄</button>
-        <button id="sh-dl" class="rounded-xl border border-line bg-white px-3 py-2 min-h-[44px] text-sm font-semibold active:bg-panel">⬇️ 비교표 내려받기</button>
+      <div class="grid gap-3 xl:grid-cols-[3fr_2fr] items-start">
+        ${card(comparisonTable(d.comparison))}
+        <div class="space-y-3">
+          ${profitCard(d.profit, d.total_count)}
+          <div class="grid grid-cols-2 gap-2">
+            <button id="sh-print" class="rounded-xl border border-line bg-white px-3 py-2 min-h-[44px] text-sm font-semibold active:bg-panel">비교표 인쇄</button>
+            <button id="sh-dl" class="rounded-xl border border-line bg-white px-3 py-2 min-h-[44px] text-sm font-semibold active:bg-panel">비교표 내려받기</button>
+          </div>
+        </div>
       </div>
-      <div class="mt-3">${profitCard(d.profit, d.total_count)}</div>
 
       <h3 class="text-base font-bold mt-6 mb-2">최근 ${d.trend.years.length}년 추이 <span class="text-sm font-normal text-muted">(${d.trend.years[0]}~${d.trend.years.at(-1)}년)</span></h3>
       ${card(`
         <label class="block text-sm text-muted mb-1" for="sh-metric">평가항목</label>
-        <select id="sh-metric" class="w-full rounded-xl border border-line bg-white px-3 py-2 mb-3">
+        <select id="sh-metric" class="w-full sm:w-72 rounded-xl border border-line bg-white px-3 py-2 mb-3">
           ${d.trend.metrics.map((m) => `<option value="${m.key}">${esc(m.label)}</option>`).join("")}</select>
-        <div class="relative" style="height:240px"><canvas id="sh-trend" role="img" aria-label="최근 연도별 평가항목 추이"></canvas></div>`)}
+        <div class="relative" style="height:280px"><canvas id="sh-trend" role="img" aria-label="최근 연도별 평가항목 추이"></canvas></div>`)}
       <details class="mt-3 rounded-2xl bg-white border border-line p-4">
         <summary class="cursor-pointer font-semibold text-sm">최근 ${d.trend.years.length}년 전국 1:1 종합 비교표</summary>
         <div class="mt-3">${trendTable(d.trend)}</div>
@@ -128,7 +137,7 @@ export async function renderShipment(el, { farm, farms, onPickFarm, onSaved = as
     </details>
 
     <div class="flex flex-wrap items-end gap-3 mt-4">
-      <div class="flex-1 min-w-[9rem]">
+      <div class="w-full sm:w-56">
         <label class="block text-sm text-muted mb-1" for="sh-year">비교 연도</label>
         <select id="sh-year" class="w-full rounded-xl border border-line bg-white px-3 py-2">
           <option value="">전체 (누적)</option>${d.years.map((y) => `<option value="${y}" ${String(y) === String(filters.year) ? "selected" : ""}>${y}년</option>`).join("")}</select>

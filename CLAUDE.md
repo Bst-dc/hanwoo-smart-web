@@ -5,6 +5,7 @@
 > `streamlit_app.py` 는 `tests/legacy_snapshot/streamlit_app_legacy.py`(규칙 비교 시험 전용, 실행하지 않음)로 옮겼다. 서버에서도 `consulting` 컨테이너를 내렸다(`/opt/hanwoo/deploy/*.bak-20261015-*` 에 이전 설정).
 
 > **2026-11-01 화면 디자인**: `web/` 의 색·글꼴·모서리는 한우 업무 시스템 공통 기준(`../시험농장/DESIGN.md`, `hanwoo-portal/theme/hanwoo-theme.css`)을 따른다 — 중립 회색 바탕·잉크색 단추·IBM Plex Sans KR, 장부 녹색(`accent`)은 데이터·고른 표시에만, 모서리 6px/4px(`web/index.html` 의 `@theme` 토큰), **이모지 쓰지 않음**. 인쇄 창(`web/print_compare.js`)의 색은 인쇄물이라 그대로.
+> **화면 뼈대(같은 날, 13인치 패드 사용)**: 폰 전용 배치(가운데 좁은 칸 + 아래 메뉴)를 버리고 시험농장·이상농가 분석앱과 같은 뼈대로 — 공통 머리글(시스템 바로가기·로그아웃), **1280px(xl) 이상은 왼쪽 사이드바에 농가 목록을 늘 펼침**, 그보다 좁으면(패드 세로 1024px·폰) 위쪽 한 줄의 농가 선택 단추. 메뉴는 본문 위 탭(고른 탭은 장부 녹색 밑줄), 본문 폭 최대 1440px. 폰은 깨지지만 않게만 유지(우선순위 낮음).
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
