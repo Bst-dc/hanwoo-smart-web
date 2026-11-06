@@ -1,9 +1,8 @@
 // 종합 현황 대시보드 — KPI 카드, 누락 농가 명단, 연도별 추이 차트·집계표, 거세우 vs 암소 비교.
 // 값은 서버(/api/dashboard)가 기존 앱과 같은 공식으로 계산해 준다. 여기서는 그리기만 한다.
 import { api, card, esc, num, table } from "../api.js";
-import { barChart, C, destroyCharts, fmt1, keep, lineChart } from "../charts.js";
+import { compareChart, destroyCharts, fmt1, keep, lineChart } from "../charts.js";
 
-const GENDER_COLOR = { 거세: C.steer, 암: C.cow, 수: C.bull };
 
 // 요약 숫자: 칸마다 카드를 따로 두지 않고, 한 상자를 선으로 나눈 한 줄로 (시험농장 DESIGN.md 2절)
 function kpi(label, value, sub = "", subTone = "") {
@@ -112,7 +111,8 @@ export async function renderDashboard(el, ctx) {
         <label class="block text-sm text-muted mb-1" for="cmp-metric">비교 지표</label>
         <select id="cmp-metric" class="w-full sm:w-72 rounded-xl border border-line bg-white px-3 py-2 mb-3">
           ${COMPARE_METRICS.map(([key, label]) => `<option value="${key}">${esc(label)}</option>`).join("")}</select>
-        <div class="relative" style="height:220px"><canvas id="cmp-chart" aria-label="거세우와 암소 비교 차트" role="img"></canvas></div>`)}
+        <div class="relative" style="height:160px"><canvas id="cmp-chart" aria-label="거세우와 암소 비교 차트" role="img"></canvas></div>
+        <p class="text-xs text-muted mt-2">검은 세로 선 = 전국 평균 (방문농가가 출하한 연도 비중에 맞춤). 수소는 전국 통계가 없음.</p>`)}
     </div>
 
     <h3 class="text-base font-bold mt-6 mb-2">농가 목록</h3>
@@ -137,13 +137,13 @@ export async function renderDashboard(el, ctx) {
     const s = d.trend.genders[gender].series[trendSel.value];
     keep("dash-trend", lineChart(el.querySelector("#trend-chart"), {
       labels: d.trend.years.map((y) => `${String(y).slice(2)}년`), farm: s.farm, national: s.national,
-      yTitle: trendLabel(trendSel.value), farmLabel: "방문농가 평균" }));
+      yTitle: trendLabel(trendSel.value), metric: trendSel.value, farmLabel: "방문농가" }));
     el.querySelector("#yearly-table").innerHTML = yearlyTable(d, gender);
   };
   const redrawCompare = () => {
-    keep("dash-compare", barChart(el.querySelector("#cmp-chart"), {
+    keep("dash-compare", compareChart(el.querySelector("#cmp-chart"), {
       labels: d.compare.map((r) => r.gender), values: d.compare.map((r) => r[cmpSel.value]),
-      colors: d.compare.map((r) => GENDER_COLOR[r.gender] || C.bull), valueLabel: compareLabel(cmpSel.value) }));
+      national: d.compare.map((r) => r.national?.[cmpSel.value] ?? null), metric: cmpSel.value, valueLabel: compareLabel(cmpSel.value) }));
   };
   el.querySelectorAll("#gender-seg button").forEach((b) => b.addEventListener("click", () => { gender = b.dataset.g; redrawTrend(); }));
   trendSel.addEventListener("change", redrawTrend);

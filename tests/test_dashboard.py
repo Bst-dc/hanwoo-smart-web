@@ -133,6 +133,13 @@ class DashboardTest(unittest.TestCase):
         self.assertEqual((c["수"]["heads"], c["수"]["carcass_weight"]), (1, 600.0))
         self.assertEqual((c["암"]["heads"], c["암"]["carcass_weight"], c["암"]["q1plus"]), (2, 310.0, 50.0))
 
+    def test_compare_has_national_weighted_by_shipment_years(self):
+        c = {r["gender"]: r for r in self.d["compare"]}
+        self.assertEqual(c["거세"]["national"]["carcass_weight"], 478.1)      # 거세 4두 모두 2025년 출하
+        self.assertEqual(c["거세"]["national"]["q1plus"], 71.3)
+        self.assertEqual(c["암"]["national"]["carcass_weight"], 393.1)         # 암 2두 모두 2026년 출하
+        self.assertEqual(set(c["수"]["national"].values()), {None})            # 수소는 전국 통계 없음
+
     def test_source_is_reported(self):
         self.assertEqual(self.d["national_source"]["kosis"], "baseline")
 

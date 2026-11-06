@@ -177,7 +177,7 @@ export async function renderShipment(el, { farm, farms, onPickFarm, onSaved = as
       const s = d.trend.series[sel.value];
       keep("sh-trend", lineChart(el.querySelector("#sh-trend"), {
         labels: d.trend.years.map((y) => `${y}년`), farm: s.farm, national: s.national,
-        yTitle: d.trend.metrics.find((m) => m.key === sel.value).label }));
+        yTitle: d.trend.metrics.find((m) => m.key === sel.value).label, metric: sel.value }));
     };
     sel.addEventListener("change", draw);
     draw();

@@ -53,6 +53,11 @@ GROUP BY gender
 ORDER BY gender
 """
 
+# 성별·연도별 출하두수 — 비교 차트의 전국 값을 방문농가의 연도 비중에 맞추려고 쓴다
+HEADS_BY_YEAR_SQL = "SELECT gender, slaughter_year AS year, COUNT(id) AS heads FROM shipment_records WHERE 1=1{member} GROUP BY gender, slaughter_year"
+
+COMPARE_KEYS = ("carcass_weight", "bms", "ribeye", "backfat", "q1plus", "month_age")
+
 ONE_PLUS_SQL = ("SELECT ROUND(SUM(CASE WHEN grade_quality IN ('1++', '1+') THEN 1 ELSE 0 END)*100.0/COUNT(*), 1) "
                 "FROM shipment_records WHERE gender=?")
 
@@ -102,6 +107,14 @@ def _nat_series(nat_g: dict, key: str, years: list[int]):
     return [nat_g.get(name, {}).get(y) for y in years]
 
 
+def _nat_weighted(nat_g: dict, key: str, heads_by_year: dict[int, int]):
+    """방문농가가 출하한 연도마다 두수만큼 무게를 두어 전국 평균을 낸다 (누적 평균과 같은 연도 섞임으로 비교하려고).
+    전국 통계가 없는 연도는 빼고, 하나도 없으면 None."""
+    pairs = [(v, n) for y, n in heads_by_year.items() if (v := _nat_series(nat_g, key, [y])[0]) is not None and n]
+    total = sum(n for _, n in pairs)
+    return round(sum(v * n for v, n in pairs) / total, 1) if total else None
+
+
 def build(conn, now: datetime | None = None, member: str = "전체") -> dict:
     now = now or datetime.now()
     nat, source = national_stats.get()
@@ -144,10 +157,17 @@ def build(conn, now: datetime | None = None, member: str = "전체") -> dict:
                        for key, _ in TREND_METRICS},
         }
 
+    heads_by_year: dict[str, dict[int, int]] = {}
+    for r in conn.execute(HEADS_BY_YEAR_SQL.format(member=_farm_in(member))).fetchall():
+        if r["year"] is not None:
+            heads_by_year.setdefault(r["gender"], {})[int(r["year"])] = int(r["heads"])
     compare = []
     for r in conn.execute(COMPARE_SQL.replace("GROUP BY", f"WHERE 1=1{_farm_in(member)} GROUP BY", 1)).fetchall():
-        compare.append({"gender": r["gender"], "heads": int(r["heads"]),
-                        **{k: _num(r[k]) for k in ("carcass_weight", "bms", "ribeye", "backfat", "q1plus", "month_age")}})
+        g = r["gender"]
+        compare.append({"gender": g, "heads": int(r["heads"]),
+                        **{k: _num(r[k]) for k in COMPARE_KEYS},
+                        # 같은 지표의 전국 평균 (방문농가 출하 연도 비중에 맞춤). 수소처럼 전국 통계가 없으면 None
+                        "national": {k: _nat_weighted(nat.get(g, {}), k, heads_by_year.get(g, {})) for k in COMPARE_KEYS}})
 
     return {
         "kpi": kpi,
