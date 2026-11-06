@@ -7,7 +7,7 @@ export const C = { farm: "#0096C7", nat: "#48CAE4", steer: "#0077B6", cow: "#48C
 
 export const fmt1 = (v) => (v === null || v === undefined ? "-" : Number(v).toFixed(1));
 
-const FONT = '"IBM Plex Sans KR", "Malgun Gothic", sans-serif';
+const FONT = '"Orbit", "Malgun Gothic", sans-serif';   // 앱 글꼴(오빗)과 같게
 if (window.Chart) Object.assign(Chart.defaults.font, { family: FONT, size: 12 });
 
 // 마우스·손가락을 댔을 때 나오는 말풍선: 검은 바탕, 모서리 4px (피그마 tooltips)

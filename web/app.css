@@ -30,7 +30,7 @@ input, select, textarea { font-size: 16px; }
 
 /* AI 리포트 본문 (마크다운을 HTML 로 바꾼 것) */
 .report { line-height: 1.7; overflow-wrap: anywhere; }
-.report h1 { font-family: "Noto Serif KR", "Batang", serif; font-size: 1.3rem; font-weight: 600; margin: .2rem 0 .8rem; padding-bottom: .4rem; border-bottom: 1px solid #D3D8D7; }
+.report h1 { font-family: "Orbit", "Malgun Gothic", sans-serif; font-size: 1.3rem; font-weight: 600; margin: .2rem 0 .8rem; padding-bottom: .4rem; border-bottom: 1px solid #D3D8D7; }
 .report h2 { font-size: 1.12rem; font-weight: 600; margin: 1.6rem 0 .6rem; }
 .report h3 { font-size: 1rem; font-weight: 600; margin: 1.2rem 0 .4rem; }
 .report p, .report ul, .report ol, .report blockquote { margin: .5rem 0; }
