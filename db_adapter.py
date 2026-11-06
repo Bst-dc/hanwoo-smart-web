@@ -237,6 +237,7 @@ class _Pool:
     Supabase 연결은 한 번 맺는 데 수백 ms 가 걸리므로, 닫힌 연결을 버리지 않고 모아 두었다 다시 쓴다."""
 
     MAX_IDLE = 4
+    MAX_IDLE_AGE = 300  # 초. 이보다 오래 쉰 연결은 서버(Supavisor)·네트워크가 이미 끊었을 수 있어 버린다.
 
     def __init__(self):
         self._idle = []
@@ -249,7 +250,10 @@ class _Pool:
             with self._lock:
                 if not self._idle:
                     break
-                raw, schema, _ = self._idle.pop()
+                raw, schema, since = self._idle.pop()
+            if time.time() - since > self.MAX_IDLE_AGE:
+                _close_quietly(raw)
+                continue
             if not raw.closed:
                 return raw, schema
         url = database_url()
@@ -291,6 +295,17 @@ def _close_quietly(raw):
         raw.close()
     except Exception:
         pass
+
+
+def _connection_lost(e, raw):
+    """연결 자체가 끊겨 생긴 오류인지. SQL 오류는 늘 pgcode 가 있다.
+    psycopg2 는 서버가 연결을 끊으면 OperationalError 대신 그냥 DatabaseError
+    ('server closed the connection unexpectedly')를 내고 raw.closed 도 0 으로 두는 경우가 있다 (2026-11-06 운영 장애)."""
+    if raw.closed:
+        return True
+    if getattr(e, "pgcode", None):
+        return False
+    return type(e) in (psycopg2.DatabaseError, psycopg2.OperationalError, psycopg2.InterfaceError)
 
 
 _POOL = _Pool()
@@ -533,15 +548,16 @@ class Connection:
         try:
             cursor._cur.execute(prefix + sql, params)
             self._savepoint = True
-        except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
-            # 오래 쉬던 연결이 서버 쪽에서 끊긴 경우: 이 트랜잭션에 쓰기가 없었다면 새 연결로 한 번 다시 시도한다.
-            if retry and self._raw.closed and not self._dirty:
-                self._reconnect()
-                cursor._cur = self._raw.cursor()
-                return self._run(cursor, sql, params, retry=False)
-            self._recover()
-            raise _wrap_error(e) from None
         except psycopg2.Error as e:
+            if _connection_lost(e, self._raw):
+                # 오래 쉬던 연결이 서버 쪽에서 끊긴 경우. 끊긴 연결은 풀로 돌아가지 않게 바로 닫고,
+                # 이 트랜잭션에 쓰기가 없었다면 새 연결로 한 번 다시 시도한다.
+                _close_quietly(self._raw)
+                if retry and not self._dirty:
+                    self._reconnect()
+                    cursor._cur = self._raw.cursor()
+                    return self._run(cursor, sql, params, retry=False)
+                raise _wrap_error(e) from None
             self._recover()
             raise _wrap_error(e) from None
 

@@ -122,5 +122,117 @@ class SaveSqlOnSqliteTest(unittest.TestCase):
         self.assertEqual([tuple(r) for r in rows], [("일반", "일반 리포트"), ("전문", "다시 만든 리포트")])
 
 
+# ---------- 끊긴 연결 처리 (2026-11-06 운영 장애 재현) ----------
+# 풀에 쉬던 연결을 Supavisor 가 끊어 두었는데, psycopg2 가 OperationalError 가 아닌 DatabaseError 를 내고
+# raw.closed 도 0 으로 둬서 재접속을 하지 않고 같은 죽은 연결을 계속 풀로 돌려 썼다 → 모든 조회가 500.
+class _FakeCur:
+    def __init__(self, raw):
+        self.raw, self.description, self.rowcount = raw, None, -1
+
+    def execute(self, sql, params=None):
+        if self.raw.dead:
+            raise db_adapter.psycopg2.DatabaseError("server closed the connection unexpectedly")
+        if self.raw.sql_error:
+            e = db_adapter.psycopg2.errors.UndefinedTable('relation "x" does not exist')
+            raise e
+        self.raw.executed.append(sql)
+        self.description, self.rowcount = (("n",),), 1
+
+    def fetchall(self):
+        return [(1,)]
+
+    def close(self):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+class _FakeRaw:
+    made = []
+
+    def __init__(self, dead=False):
+        self.dead, self.sql_error, self.closed, self.autocommit, self.executed = dead, False, 0, False, []
+        _FakeRaw.made.append(self)
+
+    def cursor(self):
+        return _FakeCur(self)
+
+    def close(self):
+        self.closed = 1
+
+    def rollback(self):
+        if self.dead:
+            raise db_adapter.psycopg2.DatabaseError("server closed the connection unexpectedly")
+
+    def commit(self):
+        pass
+
+    def get_transaction_status(self):
+        return db_adapter.ext.TRANSACTION_STATUS_IDLE
+
+
+class DeadConnectionTest(unittest.TestCase):
+    def setUp(self):
+        from unittest import mock
+        _FakeRaw.made = []
+        self.pool = db_adapter._Pool()
+        patches = [
+            mock.patch.object(db_adapter, "_POOL", self.pool),
+            mock.patch.object(db_adapter, "database_url", lambda: "postgresql://fake"),
+            mock.patch.object(db_adapter.psycopg2, "connect", lambda *a, **k: _FakeRaw()),
+        ]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+        db_adapter.invalidate("hanwoo")  # 조회 캐시가 결과를 대신 내주지 않게
+
+    def _park(self, raw, age=0):
+        self.pool._idle.append((raw, "hanwoo", db_adapter.time.time() - age))
+
+    def test_dead_idle_connection_is_replaced_and_query_succeeds(self):
+        dead = _FakeRaw(dead=True)
+        self._park(dead)
+        conn = db_adapter.connect("hanwoo")
+        row = conn.execute("SELECT 1 AS n").fetchone()
+        self.assertEqual(row[0], 1)
+        self.assertTrue(dead.closed, "끊긴 연결은 닫아야 한다")
+        conn.close()
+        self.assertNotIn(dead, [r for r, _, _ in self.pool._idle], "끊긴 연결이 풀로 돌아가면 안 된다")
+
+    def test_dead_connection_with_pending_write_is_not_retried_but_discarded(self):
+        dead = _FakeRaw(dead=True)
+        self._park(dead)
+        conn = db_adapter.connect("hanwoo")
+        conn._dirty = True  # 이 트랜잭션에 쓰기가 있었다면 다시 시도하면 안 된다 (쓰기가 사라짐)
+        with self.assertRaises(db_adapter.OperationalError):
+            conn.execute("SELECT 1 AS n")
+        self.assertTrue(dead.closed)
+        conn.rollback()
+        conn.close()
+        self.assertEqual(self.pool._idle, [])
+        # 다음 요청은 새 연결로 정상 동작
+        self.assertEqual(db_adapter.connect("hanwoo").execute("SELECT 2 AS n").fetchone()[0], 1)
+
+    def test_sql_error_keeps_connection(self):
+        raw = _FakeRaw()
+        self._park(raw)
+        conn = db_adapter.connect("hanwoo")
+        raw.sql_error = True
+        with self.assertRaises(db_adapter.OperationalError):
+            conn.execute("SELECT * FROM x")
+        self.assertFalse(raw.closed, "SQL 오류(pgcode 있음)는 연결 끊김이 아니다")
+
+    def test_long_idle_connection_is_not_reused(self):
+        old = _FakeRaw()
+        self._park(old, age=db_adapter._Pool.MAX_IDLE_AGE + 1)
+        raw, _ = self.pool.get()
+        self.assertIsNot(raw, old)
+        self.assertTrue(old.closed)
+
+
 if __name__ == "__main__":
     unittest.main()
