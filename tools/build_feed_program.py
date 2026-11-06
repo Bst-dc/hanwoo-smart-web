@@ -147,7 +147,7 @@ def upload(text: str) -> int:
         target = work / REMOTE_PATH
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text, encoding="utf-8")
-        sync_notes.git("add", REMOTE_PATH, cwd=work)
+        sync_notes.git("add", "-f", REMOTE_PATH, cwd=work)      # 비공개 저장소의 .gitignore 가 knowledge/ 를 막고 있어 -f (기존 전문자료도 같은 방식)
         if not sync_notes.git("status", "--porcelain", REMOTE_PATH, cwd=work).strip():
             log.info("이미 최신입니다")
             return 0
