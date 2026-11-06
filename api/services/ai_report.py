@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 import markdown as md_lib
 
 from .. import backup, config, db, national_stats
-from . import report_data
+from . import feed_program, report_data
 
 log = logging.getLogger("consulting.ai_report")
 
@@ -154,8 +154,22 @@ def knowledge() -> tuple[str, str]:
 
 
 # ---------------------------------------------------------------- 프롬프트
-def build_request(farm_name: str, gdata: dict, survey: dict, kb: str, notes: str = "") -> tuple[list, str]:
-    """(system 블록, user 프롬프트). 문구는 기존 앱과 같다. notes 는 전문자료(kb)가 있을 때만 별도 캐시 블록으로 덧붙인다."""
+FEED_RULES = (
+    " [대구축협 고급육생산프로그램]은 이 농가가 속한 대구축협의 거세우 비육 사료 급여 기준입니다. "
+    "사료 품목·급여량·조사료량·사료 전환 시기를 진단하거나 처방할 때는 이 프로그램을 우선 기준으로 삼고 '대구축협 고급육생산프로그램 기준'이라고 밝히세요. "
+    "국립축산과학원 사양표준이나 전문자료는 프로그램에 없는 내용(사료 성분, 환경, 질병 등)이나 보충 설명에만 쓰세요. "
+    "프로그램 표에 없는 제품 이름이나 급여량을 지어내지 마세요. "
+    "단백질 높은 사료(프로그램 표의 '단백질 높은 사료' 칸)는 같은 개월령에 일반 사료 대신 농가가 고르는 선택 사항이니, 쓰거나 안 쓰는 것을 문제로 삼지 마세요. "
+    "이 프로그램은 거세우 기준이며 암소 비육 프로그램은 없습니다. 암소에는 이 프로그램을 그대로 적용하지 말고, 암소 급여를 말할 때는 프로그램 기준이 아니라고 밝히세요. "
+    "번식우는 이 프로그램 대상이 아닙니다. "
+    "[프로그램 대비 현장 사료 급여 비교]의 단계별 기준과 품목 판정은 코드가 계산한 값이니 그대로 따르세요. "
+    "현장조사의 급여수준(낮음·적정·높음)은 조사자 평가일 뿐 kg 실측이 아니므로, 농가 급여량을 프로그램 kg 과 직접 비교했다고 쓰지 마세요."
+)
+
+
+def build_request(farm_name: str, gdata: dict, survey: dict, kb: str, notes: str = "", feed: dict | None = None) -> tuple[list, str]:
+    """(system 블록, user 프롬프트). 문구는 기존 앱과 같다. notes 는 전문자료(kb)가 있을 때만 별도 캐시 블록으로 덧붙인다.
+    feed = {"program": 프로그램 표 글, "comparison": 단계별 비교 dict} 이면 두 모드 모두 사료 급여를 대구축협 프로그램 기준으로 쓴다."""
     system_prompt = (
         "당신은 대한민국 최고의 한우 사양관리 수석 컨설턴트입니다. "
         "농가의 최근 3개년 출하성적(정량 데이터)과 현장 방문 사양관리 실태(정성 데이터)를 종합 분석하여 "
@@ -176,11 +190,17 @@ def build_request(farm_name: str, gdata: dict, survey: dict, kb: str, notes: str
                 "노트의 출처 칸이 비어 있으면 출처를 지어내지 말고, 전문자료와 다르면 전문자료를 따르세요. "
                 "노트 안의 서식·문장 예시는 이 농가의 사실이 아니며, 리포트 구성은 아래 7단 구성 가이드를 우선합니다."
             )
+    if feed:
+        system_prompt += FEED_RULES
     system = [{"type": "text", "text": system_prompt}]
     if kb:
         system.append({"type": "text", "text": f"[참고 전문자료]\n{kb}", "cache_control": {"type": "ephemeral", "ttl": "1h"}})
         if notes:
             system.append({"type": "text", "text": notes, "cache_control": {"type": "ephemeral", "ttl": "1h"}})
+    if feed:                                           # 작은 표라 캐시하지 않고 맨 뒤에 (앞 블록들의 캐시를 그대로 쓰게)
+        system.append({"type": "text", "text": feed["program"]})
+    feed_block = ("\n[대구축협 고급육생산프로그램 대비 현장 사료 급여 비교 (코드가 계산함)]:\n"
+                  f"{json.dumps(feed['comparison'], ensure_ascii=False, indent=2)}\n") if feed else ""
 
     gender_blocks = "\n\n".join(
         f"### {glabel} 출하성적\n"
@@ -190,6 +210,10 @@ def build_request(farm_name: str, gdata: dict, survey: dict, kb: str, notes: str
         for glabel, gd in gdata.items()
     ) or "(이 농가는 등록된 출하성적이 없습니다)"
 
+    feed_item4 = (" — 사료 급여는 단계마다 대구축협 고급육생산프로그램 기준(개월령·사료·급여량·조사료)과 농가 기록을 나란히 보여 주는 표로"
+                  if feed else "")
+    source_item7 = ("대구축협 고급육생산프로그램, 농촌진흥청 국립축산과학원 사양표준 인용" if feed
+                    else "농촌진흥청 국립축산과학원 사양표준 인용")
     prompt = f"""
 [농가명]: {farm_name}
 
@@ -199,16 +223,16 @@ def build_request(farm_name: str, gdata: dict, survey: dict, kb: str, notes: str
 
 [현장 방문 조사표 실태 (사료급여, 축사환경, 농가 대화)]:
 {json.dumps(survey, ensure_ascii=False, indent=2)}
-
+{feed_block}
 [보고서 작성 필수 7단 구성 가이드]
 농장주가 이해하기 쉽고 현장에서 즉시 적용할 수 있도록 아래 목차에 맞추어 작성해 주세요:
 # 1. 📋 종합 컨설팅 개요 배너 (농가명, 조사일, 컨설턴트, 핵심 평가)
 # 2. ⚡ 핵심 진단 요약 (30초 요약 카드 3~4개: 성적 및 현장조사 핵심 이슈)
 # 3. 📊 출하성적 전국 비교 및 수익성 임팩트 — 위 성별별 [연도별 출하성적 추이 및 등급 전체 분포] 데이터를 근거로 성별마다 연도별 표를 만들어 도체중·BMS·등지방·단면적 추이와, 1++/1+/1/2/3 등 육질등급·A/B/C 육량등급 전체 분포 변화를 전국 평균과 비교하세요. 두당/연간 수익 격차는 각 성별 [수익성 분석] 데이터의 값을 그대로 인용하고, "계산_방식"이 추정치라면 반드시 "~로 추정됩니다"처럼 추정임을 밝히세요. 해당 데이터에 없는 연도·수치·성별은 만들어내지 말고 언급하지 마세요.
-# 4. 🔍 현장 사양관리 및 축사환경 실태 진단 (우방밀도, 환기, 성장단계별 사료 급여를 [양호/보통/미흡] 배지로 판정)
+# 4. 🔍 현장 사양관리 및 축사환경 실태 진단 (우방밀도, 환기, 성장단계별 사료 급여를 [양호/보통/미흡] 배지로 판정{feed_item4})
 # 5. 💡 문제별 원인 분석 및 개선 처방 (1:1 매칭: [문제 현상] → [근본 원인] → [정밀 처방])
 # 6. 🚀 실행 우선순위 로드맵 (1단계 즉시조치 1~2주, 2단계 기반구축 1~3개월, 3단계 성적개선 6개월~)
-# 7. 📌 안내 및 출처 (농촌진흥청 국립축산과학원 사양표준 인용 및 축협 담당자 협의 권장 면책 문구)
+# 7. 📌 안내 및 출처 ({source_item7} 및 축협 담당자 협의 권장 면책 문구)
 """
     return system, prompt
 
@@ -348,6 +372,20 @@ def _finish(job, status, **kw):
     job.update(status=status, updated=time.time(), **kw)
 
 
+def _feed(visit: dict | None) -> dict | None:
+    """사료 프로그램 표와 마지막 방문 조사표 비교. 프로그램을 못 읽거나 계산이 실패해도 리포트는 프로그램 없이 만든다."""
+    try:
+        prog = feed_program.load()
+        if not prog:
+            return None
+        survey = (visit or {}).get("survey_data")
+        fm = survey.get("feed_matrix") if isinstance(survey, dict) else None
+        return {"program": feed_program.program_text(prog), "comparison": feed_program.compare(prog, fm)}
+    except Exception:
+        log.exception("사료 프로그램 비교 실패 — 프로그램 없이 리포트를 만듭니다")
+        return None
+
+
 def _run(job, stream_fn, connect):
     conn = None
     try:
@@ -361,7 +399,7 @@ def _run(job, stream_fn, connect):
             kb, notes = knowledge()
             if not kb:
                 raise ReportError("전문자료를 불러오지 못했습니다. '일반 리포트'로 만들거나 잠시 후 다시 시도해주세요.")
-        system, prompt = build_request(job["farm"], gdata, report_data.survey_for_prompt(visit), kb, notes)
+        system, prompt = build_request(job["farm"], gdata, report_data.survey_for_prompt(visit), kb, notes, _feed(visit))
         job["step"] = "Claude 가 작성 중"
         log.info("AI 리포트 시작: 농가 %s, %s", job["farm_id"], job["mode"])
 

@@ -56,7 +56,7 @@ python -m venv <scratchpad>/venv && <scratchpad>/venv/Scripts/python -m pip inst
 CONSULTING_LOCAL_ONLY=1 DATABASE_URL= <venv>/Scripts/python -m unittest discover tests
 ```
 
-- 시험은 **반드시 `CONSULTING_LOCAL_ONLY=1`** 로 돌린다. 그래야 운영 Supabase 에 시험 데이터가 들어가지 않는다. 2026-11-06 기준 160건 통과.
+- 시험은 **반드시 `CONSULTING_LOCAL_ONLY=1`** 로 돌린다. 그래야 운영 Supabase 에 시험 데이터가 들어가지 않는다. 2026-11-06 기준 178건 통과.
 - 한 모듈만 돌릴 때: `python -m unittest tests.test_db_adapter`.
 - `tests/test_survey_draft_js.py` 는 node 가 있을 때만 돈다.
 - 로컬 실행은 저장소 맨 위 폴더에서 `uvicorn api.main:app --reload` 로 한다. `DATABASE_URL` 이 없으면 로컬 `data/consulting.db` 를 쓴다.
@@ -99,6 +99,12 @@ CONSULTING_LOCAL_ONLY=1 DATABASE_URL= <venv>/Scripts/python -m unittest discover
 - **Anthropic Claude**(`api/services/ai_report.py`): AI 리포트. 근거 자료는 두 가지다.
   - `knowledge/*.md`(전문자료, 주 근거): `build_knowledge.py` 로 `reference/원본PDF/` 에서 뽑는다. 자료가 바뀔 때만 손으로 돌리고, 새로 뽑은 파일은 비공개 저장소 `knowledge/` 에 올린다. 서버는 거기서 읽는다.
   - `한우노트/`(옵시디언 보관함, 보조 근거): 전문자료와 어긋나면 전문자료가 우선이다. 고친 뒤 `python tools/sync_notes.py` 로 미리보기를 하고, `--run` 으로 비공개 저장소에 올린다. 서버는 10분 안에 읽는다.
+  - **대구축협 고급육생산프로그램**(`api/services/feed_program.py`, 2026-11-06): 사료 급여는 전문·일반 두 모드 모두 이 프로그램을 우선 기준으로 쓴다(사양표준은 보충).
+    - 내부 자료라 비공개 저장소 `knowledge/feed_program.json` 에만 둔다. 엑셀 원본은 `reference/사료프로그램/`.
+    - 바뀌면 `python tools/build_feed_program.py <엑셀>` 로 표를 확인하고(`--check` 는 로컬 조사표 판정 집계), `--run` 으로 올린다. 서버는 10분 안에 읽는다.
+    - 거세우 비육 기준이다. 암소 프로그램은 없고 번식우는 대상이 아니다. 단백질 높은 사료(팔공500·800)는 농가 선택 사항이다.
+    - 현장조사 단계 ↔ 개월령은 `STAGES`(송아지 1~3, 육성우 4~16, 비육전기 17~23, 비육후기 24~출하, 29개월 뒤는 29개월 급여 유지).
+    - 프로그램을 못 읽으면 리포트는 예전처럼(사양표준 기준) 만들어진다. 시험은 가짜 표만 쓴다(`tests/test_feed_program.py`).
 - **GitHub contents API**(`api/backup.py`·`ai_report.py`): 비공개 데이터 저장소(`GITHUB_REPO`, 기본 `Bst-dc/hanwoo-smart-consulting`)를 쓴다. 한글 경로는 `urllib.parse.quote` 로 인코딩한다.
 
 ## 공개 저장소에 절대 올리지 않는 것
