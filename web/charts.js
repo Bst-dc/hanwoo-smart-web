@@ -7,7 +7,7 @@ export const C = { farm: "#1F6B5E", nat: "#9AA1A0", grid: "#ECEEEE", axis: "#D3D
 
 export const fmt1 = (v) => (v === null || v === undefined ? "-" : Number(v).toFixed(1));
 
-const FONT = '"Orbit", "Malgun Gothic", sans-serif';   // 앱 글꼴(오빗)과 같게
+const FONT = '"Pretendard Variable", Pretendard, "Malgun Gothic", sans-serif';   // 앱 본문 글꼴(Pretendard, 11-12)과 같게
 if (window.Chart) Object.assign(Chart.defaults.font, { family: FONT, size: 12 });
 
 // 지표마다 어느 쪽이 좋은지. 여기 없는 지표(등지방·출하월령)는 좋고 나쁨을 정하지 않고 차이만 회색으로 적는다.

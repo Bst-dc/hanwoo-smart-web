@@ -1,3 +1,7 @@
+/* 글꼴 (11-12, 다른 한우 앱과 같게): 본문 = Pretendard(index.html --font-sans), 제목(h1~h3) = 오빗 400 — 오빗은 굵기 하나뿐이라 굵게 쓰지 않는다.
+   Tailwind(브라우저판)의 font-bold 등은 @layer utilities 라 층 없는 이 규칙이 이긴다. */
+h1, h2, h3 { font-family: var(--font-serif); font-weight: 400; letter-spacing: 0; }
+
 /* Tailwind 로 표현하기 번거로운 것만 둔다. */
 
 /* 앱 색 — 스마트컨설팅 노랑 (11-01, 포털 상자 색과 같게: 시험농장 파랑·스마트컨설팅 노랑·출하분석 빨강·시세전망 초록).
@@ -30,7 +34,7 @@ input, select, textarea { font-size: 16px; }
 
 /* AI 리포트 본문 (마크다운을 HTML 로 바꾼 것) */
 .report { line-height: 1.7; overflow-wrap: anywhere; }
-.report h1 { font-family: "Orbit", "Malgun Gothic", sans-serif; font-size: 1.3rem; font-weight: 600; margin: .2rem 0 .8rem; padding-bottom: .4rem; border-bottom: 1px solid #D3D8D7; }
+.report h1 { font-family: "Orbit", "Malgun Gothic", sans-serif; font-size: 1.3rem; font-weight: 400; margin: .2rem 0 .8rem; padding-bottom: .4rem; border-bottom: 1px solid #D3D8D7; }
 .report h2 { font-size: 1.12rem; font-weight: 600; margin: 1.6rem 0 .6rem; }
 .report h3 { font-size: 1rem; font-weight: 600; margin: 1.2rem 0 .4rem; }
 .report p, .report ul, .report ol, .report blockquote { margin: .5rem 0; }

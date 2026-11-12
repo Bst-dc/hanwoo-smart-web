@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbit&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <!-- 한우 업무 시스템 공통 디자인 — 2026-11-01 새 기준 (시험농장/DESIGN.md · hanwoo-portal/theme/hanwoo-theme.css 와 같은 값).
@@ -17,8 +18,8 @@
        모서리 두 가지(상자 6px·입력칸 4px) — 화면 코드의 rounded-2xl/xl/lg 를 그대로 두고 값만 바꾼다. -->
   <style type="text/tailwindcss">
     @theme {
-      --font-sans: "Orbit", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
-      --font-serif: "Orbit", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;   /* 제목도 오빗 — 예전 Noto Serif KR(명조) */
+      --font-sans: "Pretendard Variable", Pretendard, "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;   /* 11-12 본문·표·숫자 = Pretendard (다른 한우 앱과 같게) */
+      --font-serif: "Orbit", "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;   /* 제목 = 오빗 400 (app.css) */
       --color-brand: #1E2423;
       --color-brand-dark: #0D1110;
       --color-brand-tint: #EEF0F0;
