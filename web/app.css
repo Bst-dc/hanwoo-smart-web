@@ -1,6 +1,8 @@
 /* 글꼴 (11-12, 다른 한우 앱과 같게): 본문 = Pretendard(index.html --font-sans), 제목(h1~h3) = 오빗 400 — 오빗은 굵기 하나뿐이라 굵게 쓰지 않는다.
    Tailwind(브라우저판)의 font-bold 등은 @layer utilities 라 층 없는 이 규칙이 이긴다. */
 h1, h2, h3 { font-family: var(--font-serif); font-weight: 400; letter-spacing: 0; }
+/* 공통 머리글의 앱 이름 — 포털·시세전망·출하분석과 같게 오빗 400, 16px (11-13) */
+.hw-app { font-family: var(--font-serif); font-size: 16px; font-weight: 400; letter-spacing: 0; }
 
 /* Tailwind 로 표현하기 번거로운 것만 둔다. */
 
