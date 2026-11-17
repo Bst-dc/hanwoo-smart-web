@@ -44,6 +44,18 @@ input, select, textarea { font-size: 16px; }
 
 /* 표: 가로로 넘치면 표만 옆으로 밀고, 헤더와 값은 같은 정렬 */
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* 폰 폭: 표를 옆으로 밀어도 맨 왼쪽 열(평가항목·이력번호·연도 등 어느 줄인지 알려 주는 열)은 고정 — 'sticky-first' 를 단 표만.
+   칸이 투명하면 밑으로 지나가는 열이 비쳐 보이므로 바탕색을 칠하고, 고정 열이 너무 넓어져 나머지가 안 보이지 않게 폭을 제한한다. */
+@media (max-width: 767px) {
+  .table-wrap.sticky-first th:first-child, .table-wrap.sticky-first td:first-child {
+    position: sticky; left: 0; z-index: 1; background: #FFFFFF; box-shadow: 1px 0 0 #E1E4E4;
+    max-width: 42vw; overflow: hidden; text-overflow: ellipsis;
+  }
+  .table-wrap.sticky-first thead.bg-panel th:first-child { background: #EEF0F0; }
+}
+
+/* 조사표 필수 칸이 비었을 때 그 칸을 붉게 표시 (값을 넣기 시작하면 사라진다) */
+.field-missing { border-color: #B4321F !important; box-shadow: 0 0 0 1px #B4321F; }
 
 /* 조사표 저장 버튼: 긴 조사표를 쓰는 동안 화면 아래에 붙어 다닌다 */
 .savebar { position: sticky; bottom: calc(1rem + env(safe-area-inset-bottom)); }

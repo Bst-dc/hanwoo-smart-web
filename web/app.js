@@ -77,7 +77,13 @@ async function renderPage() {
     else if (tab.id === "data") await renderData(el, { farm, farms: state.farms, isCurrent, onPickFarm, onSaved });
     else el.innerHTML = pending(tab);
   } catch (e) {
-    if (token === renderToken) el.innerHTML = `<div class="rounded-xl border border-neg/40 bg-white p-4 text-neg text-sm">${esc(e.message)}</div>`;
+    if (token === renderToken) {
+      // 오류만 남기고 끝내지 않는다 — 폰으로 현장에서 쓰다 통신이 끊겨도 같은 화면을 바로 다시 불러올 수 있게 한다.
+      el.innerHTML = `<div role="alert" class="rounded-xl border border-neg/40 bg-white p-4 text-sm">
+        <p class="text-neg">${esc(e.message)}</p>
+        <button type="button" id="retry-page" class="mt-3 rounded-lg bg-brand text-white px-4 py-2 min-h-[44px] text-sm font-semibold">다시 시도</button></div>`;
+      el.querySelector("#retry-page").addEventListener("click", () => renderPage());
+    }
   }
 }
 

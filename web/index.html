@@ -82,12 +82,14 @@
        그보다 좁으면(패드 세로 1024px·폰): 사이드바를 위쪽 한 줄(앱 이름 + 농가 선택 단추)로 올려 본문 표가 폭을 다 쓴다. -->
   <div id="app" class="hidden">
     <div class="max-w-[1440px] mx-auto px-4 py-4 flex flex-col gap-3 xl:flex-row xl:gap-6">
-      <aside class="flex flex-col gap-3 md:flex-row md:items-center xl:flex-col xl:items-stretch xl:w-72 xl:shrink-0 xl:sticky xl:top-4 xl:self-start xl:h-[calc(100dvh-5rem)]">
-        <div class="px-1 md:shrink-0">
-          <div class="font-semibold font-serif text-lg leading-tight">한우 스마트 컨설팅</div>
-          <div class="text-xs text-muted">대구축협 지도컨설팅</div>
+      <!-- 11-17: 폰에서도 '제목 | 농가 선택'을 한 줄로 (예전에는 폰만 세로로 쌓여 본문이 화면의 28% 아래에서 시작했다).
+           열리는 농가 목록은 폰·패드에서 이 줄(aside) 전체 폭으로 펴지도록 기준 위치를 aside 로 둔다. -->
+      <aside class="relative md:static flex items-center gap-3 xl:flex-col xl:items-stretch xl:w-72 xl:shrink-0 xl:sticky xl:top-4 xl:self-start xl:h-[calc(100dvh-5rem)]">
+        <div class="px-1 shrink-0">
+          <div class="font-semibold font-serif text-base md:text-lg leading-tight">한우 스마트 컨설팅</div>
+          <div class="hidden md:block text-xs text-muted">대구축협 지도컨설팅</div>
         </div>
-        <div id="farm-picker" class="relative md:flex-1 md:max-w-md xl:max-w-none xl:flex xl:flex-col xl:min-h-0">
+        <div id="farm-picker" class="static md:relative flex-1 min-w-0 md:max-w-md xl:max-w-none xl:flex xl:flex-col xl:min-h-0">
           <button id="farm-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="컨설팅 농가 선택"
                   class="xl:hidden w-full flex items-center justify-between gap-2 rounded-lg border border-line bg-white px-3 py-2 font-semibold text-left focus:outline-2 focus:outline-brand">
             <span id="farm-btn-label" class="truncate">전체 농가</span><span aria-hidden="true" class="text-muted">▾</span></button>

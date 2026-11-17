@@ -63,7 +63,11 @@ function setOpen(open) {
   ui.open = open;
   $("farm-panel").classList.toggle("hidden", !open);
   $("farm-btn").setAttribute("aria-expanded", open);
-  if (open) { ui.q = ""; $("farm-search").value = ""; renderScopes(); renderList(); $("farm-search").focus(); }
+  if (open) {
+    ui.q = ""; $("farm-search").value = ""; renderScopes(); renderList();
+    // 마우스가 있는 PC 에서만 검색칸에 바로 초점을 준다. 폰·패드는 자판이 올라와 농가 목록을 가리므로, 검색칸을 직접 누를 때만 올라오게 한다.
+    if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) $("farm-search").focus();
+  }
 }
 
 function choose(id) {

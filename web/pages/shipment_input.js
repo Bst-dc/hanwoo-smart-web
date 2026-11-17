@@ -12,6 +12,9 @@ const f1 = (v) => (v === null || v === undefined ? "-" : Number(v).toFixed(1).re
 const btn = "rounded-xl px-4 py-3 min-h-[48px] text-sm font-semibold disabled:opacity-50";
 const warn = (t) => `<p class="text-sm text-neg mt-2">${t}</p>`;
 const note = (t) => `<p class="text-xs text-muted mt-1">${t}</p>`;
+// 다른 농가에서 옮겨지는 개체가 선택돼 있을 때만 나오는 확인란 (체크를 켜고 끌 때 이 칸만 새로 그린다)
+const confirmHtml = (moving, farm) => (moving ? `<label class="flex items-start gap-2 mt-3 text-sm text-neg"><input id="api-confirm" type="checkbox" ${st.confirm ? "checked" : ""} class="mt-0.5 h-5 w-5 shrink-0">
+          <span>다른 농가에 등록된 ${num(moving)}두를 <b>${esc(farm.name)}</b> 농가로 옮기는 것을 확인했습니다.</span></label>` : "");
 
 // 농가가 바뀌면 처음부터. 같은 농가에서 화면을 다시 그려도 입력하던 것은 남는다.
 const st = { farmId: null, tab: "api", text: "", lookup: null, off: new Set(), confirm: false, file: null, preview: null, mode: "match", busy: false };
@@ -55,8 +58,7 @@ function apiTab(farm) {
               <div class="flex items-center justify-between gap-2"><span class="kpi-value font-semibold">${esc(r.animal_no)}</span>${chip(r.status)}</div>
               <div class="text-xs text-muted mt-0.5">${esc(r.gender || "성별 없음(거세로 저장)")} · ${esc(r.slaughter_date || "도축일 없음")} · 도체중 ${f1(r.carcass_weight)}kg · ${esc(r.grade_quality || "-")}/${esc(r.grade_yield || "-")} · BMS ${f1(r.bms)} · ${f1(r.month_age)}개월</div>
             </div></label></li>`).join("")}</ul>
-        ${moving ? `<label class="flex items-start gap-2 mt-3 text-sm text-neg"><input id="api-confirm" type="checkbox" ${st.confirm ? "checked" : ""} class="mt-0.5 h-5 w-5 shrink-0">
-          <span>다른 농가에 등록된 ${num(moving)}두를 <b>${esc(farm.name)}</b> 농가로 옮기는 것을 확인했습니다.</span></label>` : ""}
+        <div id="api-confirm-box">${confirmHtml(moving, farm)}</div>
         <div class="grid grid-cols-2 gap-2 mt-3">
           <button id="api-clear" class="${btn} border border-line bg-white">목록 비우기</button>
           <button id="api-save" class="${btn} bg-brand text-white" ${chosen.length ? "" : "disabled"}>${num(chosen.length)}두 저장</button>
@@ -87,12 +89,19 @@ function bindApi(box, farm, redraw, onSaved) {
     } finally { st.busy = false; redraw(); }
   });
   if (!st.lookup) return;
+  const bindConfirm = () => box.querySelector("#api-confirm")?.addEventListener("change", (e) => { st.confirm = e.target.checked; });
+  // 체크를 켜고 끌 때는 전체를 다시 그리지 않고 '저장' 단추와 옮김 확인란만 고친다.
+  // (최대 200두 목록을 매번 다시 그리면 스크롤이 위로 튀고 눌러 둔 칸의 초점을 잃어, 현장에서 이어서 누르기 어렵다)
   box.querySelectorAll(".pick").forEach((c) => c.addEventListener("change", () => {
     const i = Number(c.dataset.i);
     if (c.checked) st.off.delete(i); else st.off.add(i);
-    redraw();
+    const chosen = st.lookup.records.filter((_, k) => !st.off.has(k));
+    const save = box.querySelector("#api-save");
+    if (save) { save.textContent = `${num(chosen.length)}두 저장`; save.disabled = !chosen.length; }
+    const cbox = box.querySelector("#api-confirm-box");
+    if (cbox) { cbox.innerHTML = confirmHtml(chosen.filter((r) => r.status === "move").length, farm); bindConfirm(); }
   }));
-  box.querySelector("#api-confirm")?.addEventListener("change", (e) => { st.confirm = e.target.checked; });
+  bindConfirm();
   box.querySelector("#api-clear")?.addEventListener("click", () => { st.lookup = null; st.off = new Set(); redraw(); });
   box.querySelector("#api-save")?.addEventListener("click", async (ev) => {
     const records = st.lookup.records.filter((_, i) => !st.off.has(i)).map(({ status, ...r }) => r);

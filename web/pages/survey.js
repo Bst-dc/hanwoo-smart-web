@@ -172,9 +172,28 @@ function readInputs(form) {
   form.querySelectorAll("[data-feed]").forEach((el) => { st.values.feed_matrix[el.dataset.feed][el.dataset.row] = el.value; });
 }
 
+// 필수 칸이 비었을 때: 그 칸이 든 접힌 섹션을 열고, 칸으로 이동해 초점을 주고, 붉은 테두리로 표시한다.
+// (예전에는 화면 맨 위에 문구만 띄워서, 접힌 섹션을 하나씩 열어 비어 있는 칸을 찾아야 했다)
+function showMissing(form, f) {
+  const section = FORM.sections.find((s) => s.fields.includes(f));
+  form.querySelectorAll(".field-missing").forEach((x) => x.classList.remove("field-missing"));
+  const input = form.querySelector(`[data-key="${f.key}"]`);
+  if (!input) {
+    flash(errBox(`'${f.label}' 칸이 비어 있습니다. 값을 넣어주세요 (없으면 0).`));
+    window.scrollTo(0, 0);
+    return;
+  }
+  flash(errBox(`'${f.label}' 칸이 비어 있습니다${section ? ` (${section.title})` : ""}. 칸으로 이동했으니 값을 넣어주세요 (없으면 0).`));
+  const details = input.closest("details");
+  if (details) details.open = true;
+  input.classList.add("field-missing");
+  input.scrollIntoView({ block: "center", behavior: "smooth" });
+  input.focus({ preventScroll: true });
+}
+
 function bindForm(el, farm, rerender) {
   const form = el.querySelector("#sv-form");
-  form.addEventListener("input", () => { setDirty(true); scheduleDraft(form); });
+  form.addEventListener("input", (e) => { e.target.classList?.remove("field-missing"); setDirty(true); scheduleDraft(form); });
   form.addEventListener("change", (e) => {
     setDirty(true);
     scheduleDraft(form);
@@ -226,7 +245,7 @@ function bindForm(el, farm, rerender) {
     if (st.saving) return;
     readInputs(form);
     const missing = FORM.sections.flatMap((s) => s.fields).find((f) => (f.kind === "int" || f.kind === "float" || f.kind === "date") && st.values[f.key] === "");
-    if (missing) { flash(errBox(`'${missing.label}' 칸이 비어 있습니다. 값을 넣어주세요 (없으면 0).`)); window.scrollTo(0, 0); return; }
+    if (missing) { showMissing(form, missing); return; }
     const saveBtn = el.querySelector("#sv-save");
     const draftIds = [st.farmId, st.meta?.id];
     clearTimeout(draftTimer);
@@ -245,7 +264,7 @@ function bindForm(el, farm, rerender) {
       await rerender(true);
       window.scrollTo(0, 0);
     } catch (ex) {
-      const why = ex instanceof TypeError ? "서버에 연결하지 못했습니다(신호 확인)" : ex.message;   // fetch 네트워크 실패는 브라우저 영어 문구라 바꿔 보인다
+      const why = ex.network || ex instanceof TypeError ? "서버에 연결하지 못했습니다(신호 확인)" : ex.message;   // 통신 실패(api.js 가 network 로 표시)는 짧은 문구로 보인다
       flash(errBox(`${why} — 입력한 내용은 이 폰에 임시 저장돼 있습니다. 신호가 잡히면 다시 저장하세요.`));
       window.scrollTo(0, 0);
     } finally {

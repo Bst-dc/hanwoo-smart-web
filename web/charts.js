@@ -43,6 +43,11 @@ function noChartLib(canvas) {
 // 오류를 내고 이전 차트를 그대로 둔다 — keep(name, lineChart(...)) 은 새 차트를 만든 뒤에야 이전 것을 지우므로 여기서 막는다.
 function freeCanvas(canvas) { Chart.getChart(canvas)?.destroy(); }
 
+// 폰 폭(캔버스 부모 430px 미만)에서는 선·막대 끝 글자를 줄인다 — 글자 칸이 캔버스의 절반 가까이를 차지해 그래프가 찌그러졌다.
+// 그릴 때와 차트 폭이 바뀔 때(화면 돌리기·창 크기·격자가 자리 잡은 뒤)마다 다시 본다.
+const NARROW_PX = 430;
+const isNarrow = (canvas) => (canvas.parentElement?.clientWidth || canvas.clientWidth || 9999) < NARROW_PX;
+
 const END_FONT = `600 12px ${FONT}`;
 const DIFF_FONT = `500 12px ${FONT}`;
 
@@ -55,7 +60,8 @@ function trendLabels(metric, farmLabel) {
       const [farm, nat] = chart.data.datasets.map((d) => d.data);
       ctx.save();
       // 1) 선 끝 이름·값. 두 끝이 너무 가까우면 위아래로 벌린다.
-      const ends = [[0, C.farm, farmLabel], [1, C.nat, "전국"]].map(([ds, color, name]) => {
+      const farmName = typeof farmLabel === "function" ? farmLabel() : farmLabel;      // 폭이 바뀌면 줄인 이름으로 바뀐다
+      const ends = [[0, C.farm, farmName], [1, C.nat, "전국"]].map(([ds, color, name]) => {
         const i = lastIndex(chart.data.datasets[ds].data);
         if (i < 0) return null;
         const pt = chart.getDatasetMeta(ds).data[i];
@@ -89,7 +95,8 @@ function trendLabels(metric, farmLabel) {
 export function lineChart(canvas, { labels, farm, national, yTitle, metric, farmLabel = "이 농가" }) {
   if (!window.Chart) return noChartLib(canvas);
   freeCanvas(canvas);
-  const right = textWidth(canvas, END_FONT, [`${farmLabel} 000.0`, "전국 000.0"]) + 16;
+  let endName = isNarrow(canvas) ? "농가" : farmLabel;            // 선 끝 이름만 줄인다 (범례·말풍선은 그대로 farmLabel)
+  const padRight = () => textWidth(canvas, END_FONT, [`${endName} 000.0`, "전국 000.0"]) + 16;
   const last = lastIndex(farm);
   return new Chart(canvas, {
     type: "line",
@@ -101,7 +108,11 @@ export function lineChart(canvas, { labels, farm, national, yTitle, metric, farm
     ] },
     options: {
       responsive: true, maintainAspectRatio: false, animation: false,
-      layout: { padding: { top: 12, left: 4, right, bottom: 22 } },
+      layout: { padding: { top: 12, left: 4, right: padRight(), bottom: 22 } },
+      onResize: (chart, size) => {                                  // 폭이 폰 기준을 넘나들면 끝 이름과 오른쪽 여백을 다시 맞춘다
+        const n = size.width < NARROW_PX ? "농가" : farmLabel;
+        if (n !== endName) { endName = n; chart.options.layout.padding.right = padRight(); chart.update("none"); }
+      },
       interaction: { mode: "index", intersect: false },
       plugins: {
         legend: { display: false },
@@ -116,7 +127,7 @@ export function lineChart(canvas, { labels, farm, national, yTitle, metric, farm
         x: { offset: true, border: { color: C.axis }, grid: { display: false }, ticks: { color: C.ink, padding: 8, font: { size: 13 } } },
       },
     },
-    plugins: [trendLabels(metric, farmLabel)],
+    plugins: [trendLabels(metric, () => endName)],
   });
 }
 
@@ -124,14 +135,19 @@ export function lineChart(canvas, { labels, farm, national, yTitle, metric, farm
 export function compareChart(canvas, { labels, values, national, valueLabel, metric }) {
   if (!window.Chart) return noChartLib(canvas);
   freeCanvas(canvas);
-  const right = textWidth(canvas, END_FONT, ["000.0  전국 000.0 (+00.0)"]) + 12;
+  let narrow = isNarrow(canvas);                  // 폰: '전국 000.0' 은 빼고 '값 (전국과의 차이)' 만 — 전국 값은 검은 세로 선과 말풍선으로 본다
+  const padRight = () => textWidth(canvas, END_FONT, [narrow ? "000.0  (+00.0)" : "000.0  전국 000.0 (+00.0)"]) + 12;
   const max = Math.max(0, ...[...values, ...national].filter(has));
   return new Chart(canvas, {
     type: "bar",
     data: { labels, datasets: [{ data: values, backgroundColor: C.farm, borderRadius: 4, borderSkipped: "start", barThickness: 22 }] },
     options: {
       indexAxis: "y", responsive: true, maintainAspectRatio: false, animation: false,
-      layout: { padding: { right, top: 4, bottom: 4 } },
+      layout: { padding: { right: padRight(), top: 4, bottom: 4 } },
+      onResize: (chart, size) => {                  // 폭이 폰 기준을 넘나들면 글자와 오른쪽 여백을 다시 맞춘다
+        const n = size.width < NARROW_PX;
+        if (n !== narrow) { narrow = n; chart.options.layout.padding.right = padRight(); chart.update("none"); }
+      },
       plugins: { legend: { display: false }, tooltip: { ...TOOLTIP, callbacks: {
         label: (c) => ` ${valueLabel}: ${fmt1(c.parsed.x)}`,
         afterLabel: (c) => (has(national[c.dataIndex]) ? ` 전국: ${fmt1(national[c.dataIndex])}` : ""),
@@ -159,7 +175,7 @@ export function compareChart(canvas, { labels, values, national, valueLabel, met
         if (has(n)) {
           const d = Math.round((v - n) * 10) / 10;
           ctx.font = DIFF_FONT; ctx.fillStyle = diffColor(d, metric);
-          ctx.fillText(`전국 ${fmt1(n)} (${signed(d)})`, x + vw + 14, bar.y);
+          ctx.fillText(narrow ? `(${signed(d)})` : `전국 ${fmt1(n)} (${signed(d)})`, x + vw + (narrow ? 8 : 14), bar.y);
         }
       });
       ctx.restore();

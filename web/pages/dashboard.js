@@ -67,7 +67,18 @@ export async function renderDashboard(el, ctx) {
     : "전국 평균: 기본값 사용 중 (KOSIS 최신값을 받지 못했습니다)";
   const srcTone = src.kosis === "live" ? "text-muted" : "text-neg";
 
-  const list = (names) => (names.length ? names.map(esc).join(", ") : "해당 농가 없음");
+  // 누락 농가 명단: 이름을 눌러 그 농가를 고르고 빠진 자료를 채우는 화면(goal 탭)으로 바로 간다.
+  // 서버가 이름만 주고 농가 이름은 겹칠 수 있어서, 이름이 하나뿐인 농가만 누르게 하고 겹치면 글자로 둔다(엉뚱한 농가로 가지 않게).
+  const idsOf = new Map();
+  farms.forEach((f) => idsOf.set(f.name, [...(idsOf.get(f.name) || []), f.id]));
+  const list = (names, goal) => (names.length
+    ? `<div class="flex flex-wrap gap-2">${names.map((n) => {
+      const ids = idsOf.get(n) || [];
+      return ids.length === 1
+        ? `<button type="button" data-pick="${ids[0]}" data-goal="${goal}" class="rounded-lg border border-line bg-white px-3 py-2 min-h-[44px] text-sm text-ink hover:bg-panel active:bg-panel">${esc(n)}</button>`
+        : `<span class="px-3 py-2 text-sm text-muted" title="같은 이름의 농가가 있어 농가 선택에서 직접 고르세요">${esc(n)}</span>`;
+    }).join("")}</div>`
+    : "해당 농가 없음");
   el.innerHTML = `
     <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
       <h2 class="text-xl font-semibold">종합 현황 대시보드</h2>
@@ -83,8 +94,8 @@ export async function renderDashboard(el, ctx) {
     <details class="mt-3 rounded-2xl bg-white border border-line p-4">
       <summary class="cursor-pointer font-semibold text-sm">누락 데이터 보유 농가 명단</summary>
       <div class="mt-3 space-y-3 text-sm">
-        <div><div class="font-semibold">출하성적만 있고 조사표 없는 농가</div><div class="text-muted mt-1">${list(k.missing_survey)}</div></div>
-        <div><div class="font-semibold">조사표만 있고 출하성적 없는 농가</div><div class="text-muted mt-1">${list(k.missing_shipment)}</div></div>
+        <div><div class="font-semibold">출하성적만 있고 조사표 없는 농가</div><div class="text-xs text-muted">이름을 누르면 그 농가를 고르고 2단계 · 현장조사로 이동합니다.</div><div class="mt-2">${list(k.missing_survey, "survey")}</div></div>
+        <div><div class="font-semibold">조사표만 있고 출하성적 없는 농가</div><div class="text-xs text-muted">이름을 누르면 그 농가를 고르고 1단계 · 출하성적 비교로 이동합니다.</div><div class="mt-2">${list(k.missing_shipment, "shipment")}</div></div>
       </div>
     </details>
     <p class="text-xs ${srcTone} mt-2">${esc(srcNote)}</p>
@@ -112,7 +123,7 @@ export async function renderDashboard(el, ctx) {
         <select id="cmp-metric" class="w-full sm:w-72 rounded-xl border border-line bg-white px-3 py-2 mb-3">
           ${COMPARE_METRICS.map(([key, label]) => `<option value="${key}">${esc(label)}</option>`).join("")}</select>
         <div class="relative" style="height:160px"><canvas id="cmp-chart" aria-label="거세우와 암소 비교 차트" role="img"></canvas></div>
-        <p class="text-xs text-muted mt-2">검은 세로 선 = 전국 평균 (방문농가가 출하한 연도 비중에 맞춤). 수소는 전국 통계가 없음.</p>`)}
+        <p class="text-xs text-muted mt-2">검은 세로 선 = 전국 평균 (방문농가가 출하한 연도 비중에 맞춤). 수소는 전국 통계가 없음.</p>`, "min-w-0")}
     </div>
 
     <h3 class="text-base font-bold mt-6 mb-2">농가 목록</h3>
@@ -156,5 +167,10 @@ export async function renderDashboard(el, ctx) {
     renderDashboard(el, ctx).catch((e) => { el.innerHTML = `<p class="text-sm text-neg">${esc(e.message)}</p>`; });
   }));
   el.querySelectorAll(".farm-card").forEach((b) => b.addEventListener("click", () => onPickFarm(b.dataset.farm)));
+  // 누락 농가 칩: 농가를 고른 뒤 빠진 자료를 채우는 탭으로 이동 (탭은 주소 해시로 바뀐다)
+  el.querySelectorAll("[data-pick]").forEach((b) => b.addEventListener("click", () => {
+    onPickFarm(b.dataset.pick);
+    location.hash = `#/${b.dataset.goal}`;
+  }));
 }
 

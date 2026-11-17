@@ -8,11 +8,19 @@ export const state = { farms: [], farmId: null, onUnauthorized: () => {} };
 export async function api(path, options = {}) {
   // 파일(FormData)은 브라우저가 Content-Type(경계값 포함)을 직접 붙여야 한다
   const json = options.body instanceof FormData ? {} : { "Content-Type": "application/json" };
-  const res = await fetch(API_BASE + path, {
-    credentials: "include",                       // 로그인 쿠키
-    ...options,
-    headers: { ...json, ...(options.headers || {}) },
-  });
+  let res;
+  try {
+    res = await fetch(API_BASE + path, {
+      credentials: "include",                       // 로그인 쿠키
+      ...options,
+      headers: { ...json, ...(options.headers || {}) },
+    });
+  } catch {
+    // 축사처럼 통신이 불안정한 곳에서는 fetch 자체가 실패한다. 브라우저 영문 문구(Failed to fetch) 대신 할 일을 알려 준다.
+    const err = new Error("서버에 연결하지 못했습니다. 통신 상태를 확인한 뒤 다시 시도하세요.");
+    err.network = true;
+    throw err;
+  }
   if (res.status === 401 && !path.startsWith("/api/auth/")) {
     state.onUnauthorized();
     throw new Error("로그인이 필요합니다.");
@@ -59,7 +67,7 @@ export function table({ columns, rows }, { fmt = {}, align = {}, empty = "데이
   const cls = { left: "text-left", center: "text-center", right: "text-right" };
   const cell = (c, v) => (v === null || v === undefined || v === "" ? '<span class="text-muted">-</span>'
     : esc(fmt[c] ? fmt[c](v) : typeof v === "number" ? num(v) : v));
-  return `<div class="table-wrap border border-line rounded-xl"><table class="w-full text-sm">
+  return `<div class="table-wrap sticky-first border border-line rounded-xl"><table class="w-full text-sm">
     <thead class="bg-panel"><tr>${columns.map((c, i) => `<th class="px-3 py-2 ${cls[colAlign[i]]} font-semibold whitespace-nowrap">${esc(c)}</th>`).join("")}</tr></thead>
     <tbody>${rows.map((r) => `<tr class="border-t border-line">${r.map((v, i) =>
       `<td class="px-3 py-2 whitespace-nowrap ${cls[colAlign[i]]} ${colAlign[i] === "left" ? "" : "kpi-value"}">${cell(columns[i], v)}</td>`).join("")}</tr>`).join("")}</tbody>

@@ -19,7 +19,7 @@ function badge(text) {
 // 전국 1:1 비교: 넓은 화면이라 항목마다 한 줄 — 평가항목 · 농가 · 전국 · 격차 · 진단
 function comparisonTable(rows) {
   const th = (t, cls = "text-right") => `<th class="py-2 px-2 ${cls} font-medium whitespace-nowrap">${t}</th>`;
-  return `<div class="table-wrap"><table class="w-full text-sm">
+  return `<div class="table-wrap sticky-first"><table class="w-full text-sm">
     <thead><tr class="text-xs text-muted border-b border-brand-line">${th("평가항목", "text-left")}${th("농가")}${th("전국")}${th("격차")}${th("진단")}</tr></thead>
     <tbody>${rows.map((r) => `<tr class="border-b border-line last:border-0">
       <td class="py-2.5 px-2 font-semibold whitespace-nowrap">${esc(r.item)}</td>
