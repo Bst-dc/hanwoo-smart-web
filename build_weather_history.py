@@ -2,9 +2,9 @@
 
 사용: py -3 -X utf8 build_weather_history.py <키가 든 파일 또는 URL 한 줄이 적힌 txt> [--raw 일자료.csv]
 - 키(authKey)는 인자 파일에서만 읽고 어디에도 저장·출력하지 않는다. 결과 파일에는 통계값만 들어간다.
-- 지점 9곳(대구 143·구미 279·영천 281·경주 283·의성 278·청송 276·안동 136·합천 285·밀양 288)의 2023~2025 일자료를 하루 한 번씩 받는다.
+- 지점 9곳(대구 143·구미 279·영천 281·경주 283·의성 278·청송 276·안동 136·합천 285·밀양 288)의 최근 3개 해(끝난 해) 일자료를 하루 한 번씩 받는다.
 - 연값: 평균기온 = 일평균기온의 평균, 최고/최저 = 일 최고/최저기온의 연 최대/최소, 강수량 = 일강수량 합, 습도 = 일평균습도의 평균.
-  (2025년은 기존 surveys.WEATHER 표와 모두 같다 — 같은 정의이다.)
+  풍속 = 일평균풍속의 평균. 연말이 지나 새 해가 끝나면 다시 돌리면 3년 창이 한 해 앞으로 밀린다.
 """
 import csv, os, re, sys, time, urllib.request, datetime as dt, statistics as st
 from concurrent.futures import ThreadPoolExecutor
@@ -13,7 +13,15 @@ STNS = {"143", "279", "281", "283", "278", "276", "136", "285", "288"}
 # 시군 → 지점 (기존 surveys.WEATHER 의 '직접/준용' 과 같다)
 REGION_STN = {"대구": "143", "경산": "143", "영천": "281", "구미": "279", "군위": "278", "청도": "288", "고령": "285", "성주": "279",
               "합천": "285", "창녕": "288", "경주": "283", "의성": "278", "청송": "276", "안동": "136", "김천": "279", "칠곡": "279"}
-YEARS = ("2023", "2024", "2025")
+N_YEARS = 3                                           # 최근 몇 해를 만들까 (끝난 해만 — 올해는 제외)
+
+
+def target_years(today=None):
+    end = (today or dt.date.today()).year - 1
+    return [str(y) for y in range(end - N_YEARS + 1, end + 1)]
+
+
+YEARS = target_years()
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "api", "services", "weather_history.py")
 
@@ -22,8 +30,8 @@ def fetch_all(key, raw_path):
     done = set()
     if os.path.exists(raw_path):
         done = {r[0] for r in csv.reader(open(raw_path, encoding="utf-8"))}
-    d, days = dt.date(2023, 1, 1), []
-    while d <= dt.date(2025, 12, 31):
+    d, days = dt.date(int(YEARS[0]), 1, 1), []
+    while d <= dt.date(int(YEARS[-1]), 12, 31):
         if d.strftime("%Y%m%d") not in done: days.append(d)
         d += dt.timedelta(days=1)
 
@@ -55,7 +63,8 @@ def yearly(raw_path):
     for (stn, y), rs in by.items():
         ta, hi, lo, hm = ok(rs, 10), ok(rs, 11), ok(rs, 13), ok(rs, 18)
         rn = sum(x for x in (float(r[38]) for r in rs) if x > 0)
-        out[(stn, y)] = {"avgTemp": round(st.mean(ta), 1), "highTemp": max(hi), "lowTemp": min(lo), "precip": round(rn, 1), "humid": round(st.mean(hm), 1)}
+        ws = ok(rs, 2)
+        out[(stn, y)] = {"avgTemp": round(st.mean(ta), 1), "highTemp": max(hi), "lowTemp": min(lo), "precip": round(rn, 1), "humid": round(st.mean(hm), 1), "wind": round(st.mean(ws), 1)}
     return out
 
 
@@ -67,6 +76,7 @@ def main():
     y = yearly(raw)
     lines = ['"""최근 3년 지역 날씨 (기상청 ASOS 일자료로 만든 통계값) — build_weather_history.py 가 만든다. 직접 고치지 않는다.',
              '2025년은 surveys.WEATHER 와 같은 값이다(대조 완료). 지점이 없는 시군은 가까운 관측소 값을 준용한다."""',
+             f"YEARS = {[int(x) for x in YEARS]!r}   # 실행한 날 기준 끝난 최근 {N_YEARS}개 해. 마지막 해가 조사표에 자동 기록되는 기준 연도",
              "BY_YEAR = {"]
     for yr in YEARS:
         lines.append(f"    {yr}: {{")

@@ -167,7 +167,7 @@ function formView(farm) {
       ${FORM.sections.map((s, i) => `
         <details class="rounded-2xl bg-white border border-line p-4" ${s.open ? "open" : ""}>
           <summary class="cursor-pointer font-semibold">${esc(s.title)}</summary>
-          ${i === 1 ? '<p class="text-xs text-muted mt-2">지역을 고르면 그 지역의 날씨가 자동으로 기록됩니다 (저장 값은 2025년 기준, AI 리포트에 쓰임).</p>' : ""}
+          ${i === 1 ? `<p class="text-xs text-muted mt-2">지역을 고르면 그 지역의 날씨가 자동으로 기록됩니다 (저장 값은 ${FORM.weather_year}년 기준, AI 리포트에는 최근 3년 값이 쓰임).</p>` : ""}
           <div class="mt-3 grid gap-4 ${i === 1 ? "hidden " : ""}${s.fields.some((f) => f.kind === "feed" || f.kind === "textarea") ? "" : "sm:grid-cols-2 lg:grid-cols-3"}">${s.fields.map((f) => field(f, st.values[f.key])).join("")}</div>
           ${i === 1 ? `<div class="mt-4"><div class="text-sm font-medium mb-1.5">최근 3년 비교</div><div id="wx-history">${weatherHistoryHtml(st.values.region)}</div></div>` : ""}
         </details>`).join("")}

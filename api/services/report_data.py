@@ -16,6 +16,7 @@ import pandas as pd
 
 from .. import national_stats
 from . import ekape
+from . import surveys
 
 log = logging.getLogger("consulting.report_data")
 
@@ -228,5 +229,12 @@ def survey_for_prompt(visit: dict | None) -> dict:
     if not visit:
         return {}
     d = dict(visit)
-    d["survey_data"] = relabel(d.get("survey_data"))
-    return relabel(d)
+    raw = d.get("survey_data")
+    d["survey_data"] = relabel(raw)
+    out = relabel(d)
+    hist = (surveys.weather_history().get(raw.get("region")) if isinstance(raw, dict) else None)
+    if hist:   # 조사표에 저장된 날씨는 한 해(기준 연도) 값이라, 그 지역의 최근 3년 연도별 값을 함께 준다
+        label = {"avgTemp": "연평균기온(℃)", "highTemp": "최고기온(℃)", "lowTemp": "최저기온(℃)",
+                 "precip": "연강수량(mm)", "humid": "평균상대습도(%)", "wind": "평균풍속(m/s)"}
+        out["지역 최근 3년 날씨(연도별)"] = {f"{y}년": {label[k]: v for k, v in vals.items()} for y, vals in hist.items() if vals}
+    return out

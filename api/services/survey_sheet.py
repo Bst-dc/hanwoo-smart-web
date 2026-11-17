@@ -72,9 +72,12 @@ def _section(s: dict, prefill: dict, weather: dict | None) -> str:
     fields = s["fields"]
     if title.startswith("2."):                                   # 날씨는 지역을 고르면 앱이 채운다
         if weather:
-            cells = "".join(f"<tr><th>{e(WEATHER_LABEL[k])}</th><td class='fixed'>{weather[v]}</td></tr>"
-                            for k, v in surveys.WEATHER_FIELDS.items())
-            body = f'<table>{cells}</table><div class="note">{e(prefill.get("region", ""))} 지역 기준값이 미리 적혀 있습니다 (출처: {e(weather["source"])}). 손으로 적을 필요 없습니다.</div>'
+            hist = surveys.weather_history().get(prefill.get("region", "")) or {}
+            cols = [("avgTemp", "평균기온 (℃)"), ("highTemp", "최고기온 (℃)"), ("lowTemp", "최저기온 (℃)"),
+                    ("precip", "강수량 (mm)"), ("humid", "습도 (%)"), ("wind", "풍속 (m/s)")]
+            head = "".join(f"<th>{c[1]}</th>" for c in cols)
+            rows = "".join(f"<tr><th class='row'>{e(y)}년</th>" + "".join(f"<td class='fixed'>{(v or {}).get(k, '')}</td>" for k, _ in cols) + "</tr>" for y, v in hist.items())
+            body = f'<table><tr><th class="row">연도</th>{head}</tr>{rows}</table><div class="note">{e(prefill.get("region", ""))} 지역 최근 3년 값이 미리 적혀 있습니다 (출처: {e(weather["source"])}). 손으로 적을 필요 없습니다.</div>'
         else:
             body = '<div class="note">앱에서 지역을 고르면 날씨 값이 자동으로 채워집니다. 손으로 적을 필요 없습니다.</div>'
         return f"<section><h2>{e(title)}</h2>{body}</section>"

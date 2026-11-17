@@ -16,33 +16,34 @@ from datetime import date
 
 log = logging.getLogger("consulting.surveys")
 
-# 2025년 기준 지역 날씨 (기존 앱 WEATHER_DATA 와 같다)
-WEATHER = {
-    '대구': {'avgTemp': 15.2, 'highTemp': 37.4, 'lowTemp': -10.7, 'precip': 1029.0, 'wind': 2.2, 'humid': 61.1, 'source': '대구 관측소 (직접)'},
-    '경산': {'avgTemp': 15.2, 'highTemp': 37.4, 'lowTemp': -10.7, 'precip': 1029.0, 'wind': 2.2, 'humid': 61.1, 'source': '인접 대구 관측소 값 준용'},
-    '영천': {'avgTemp': 14.0, 'highTemp': 36.7, 'lowTemp': -11.8, 'precip': 1047.7, 'wind': 1.7, 'humid': 67.3, 'source': '영천 관측소 (직접)'},
-    '구미': {'avgTemp': 14.6, 'highTemp': 38.3, 'lowTemp': -11.0, 'precip': 1046.5, 'wind': 1.3, 'humid': 65.0, 'source': '구미 관측소 (직접)'},
-    '군위': {'avgTemp': 13.3, 'highTemp': 38.3, 'lowTemp': -17.1, 'precip': 964.3, 'wind': 1.1, 'humid': 71.5, 'source': '인접 의성 관측소 값 준용'},
-    '청도': {'avgTemp': 15.1, 'highTemp': 39.2, 'lowTemp': -12.0, 'precip': 1314.0, 'wind': 1.3, 'humid': 64.3, 'source': '인접 밀양 관측소 값 준용'},
-    '고령': {'avgTemp': 14.6, 'highTemp': 37.7, 'lowTemp': -12.7, 'precip': 1580.6, 'wind': 0.9, 'humid': 72.2, 'source': '인접 합천 관측소 값 준용'},
-    '성주': {'avgTemp': 14.6, 'highTemp': 38.3, 'lowTemp': -11.0, 'precip': 1046.5, 'wind': 1.3, 'humid': 65.0, 'source': '인접 구미 관측소 값 준용'},
-    '합천': {'avgTemp': 14.6, 'highTemp': 37.7, 'lowTemp': -12.7, 'precip': 1580.6, 'wind': 0.9, 'humid': 72.2, 'source': '합천 관측소 (직접)'},
-    '창녕': {'avgTemp': 15.1, 'highTemp': 39.2, 'lowTemp': -12.0, 'precip': 1314.0, 'wind': 1.3, 'humid': 64.3, 'source': '인접 밀양 관측소 값 준용'},
-    '경주': {'avgTemp': 14.6, 'highTemp': 37.6, 'lowTemp': -11.3, 'precip': 1033.0, 'wind': 2.6, 'humid': 65.7, 'source': '경주 관측소 (직접)'},
-    '의성': {'avgTemp': 13.3, 'highTemp': 38.3, 'lowTemp': -17.1, 'precip': 964.3, 'wind': 1.1, 'humid': 71.5, 'source': '의성 관측소 (직접)'},
-    '청송': {'avgTemp': 12.5, 'highTemp': 38.2, 'lowTemp': -18.1, 'precip': 957.3, 'wind': 1.9, 'humid': 69.5, 'source': '청송 관측소 (직접)'},
-    '안동': {'avgTemp': 13.5, 'highTemp': 37.6, 'lowTemp': -15.0, 'precip': 887.2, 'wind': 1.5, 'humid': 66.0, 'source': '안동 관측소 (직접)'},
-    '김천': {'avgTemp': 14.6, 'highTemp': 38.3, 'lowTemp': -11.0, 'precip': 1046.5, 'wind': 1.3, 'humid': 65.0, 'source': '인접 구미 관측소 값 준용'},
-    '칠곡': {'avgTemp': 14.6, 'highTemp': 38.3, 'lowTemp': -11.0, 'precip': 1046.5, 'wind': 1.3, 'humid': 65.0, 'source': '인접 구미 관측소 값 준용'},
+# 지역 날씨 — 값은 기상청 ASOS 일자료 통계(weather_history.py, 만드는 법은 build_weather_history.py).
+#   조사표에 자동 기록되는 기준값 = 자료의 '가장 최근 해'(연말이 지나 자료를 새로 만들면 저절로 한 해씩 밀린다).
+#   지점이 없는 시군은 가까운 관측소 값을 준용한다 (아래 출처 문구).
+from .weather_history import BY_YEAR as WEATHER_BY_YEAR, YEARS as WEATHER_YEARS
+WEATHER_YEAR = WEATHER_YEARS[-1]
+WEATHER_SOURCES = {
+    '대구': '대구 관측소 (직접)',
+    '경산': '인접 대구 관측소 값 준용',
+    '영천': '영천 관측소 (직접)',
+    '구미': '구미 관측소 (직접)',
+    '군위': '인접 의성 관측소 값 준용',
+    '청도': '인접 밀양 관측소 값 준용',
+    '고령': '인접 합천 관측소 값 준용',
+    '성주': '인접 구미 관측소 값 준용',
+    '합천': '합천 관측소 (직접)',
+    '창녕': '인접 밀양 관측소 값 준용',
+    '경주': '경주 관측소 (직접)',
+    '의성': '의성 관측소 (직접)',
+    '청송': '청송 관측소 (직접)',
+    '안동': '안동 관측소 (직접)',
+    '김천': '인접 구미 관측소 값 준용',
+    '칠곡': '인접 구미 관측소 값 준용',
 }
+WEATHER = {r: {**WEATHER_BY_YEAR[WEATHER_YEAR][r], 'source': src} for r, src in WEATHER_SOURCES.items()}
 REGIONS = list(WEATHER) + ['기타']
 
-# 최근 3년 비교표 (읽기 전용 참고용 — 입력칸·저장 값과 무관).
-#   값은 기상청 ASOS 일자료로 만든 통계(weather_history.py, 만드는 법은 build_weather_history.py). 2025 는 위 WEATHER 와 같다.
-#   형식: WEATHER_BY_YEAR[연도][지역] = {'avgTemp':…, 'highTemp':…, 'lowTemp':…, 'precip':…, 'humid':…}  (값이 없는 칸은 화면에 '준비 중')
-from .weather_history import BY_YEAR as WEATHER_BY_YEAR
-WEATHER_YEARS = [2023, 2024, 2025]
-HISTORY_KEYS = ['avgTemp', 'highTemp', 'lowTemp', 'precip', 'humid']
+# 최근 3년 비교표 (읽기 전용 참고용 — 입력칸·저장 값과 무관). 연도는 weather_history.YEARS (위).
+HISTORY_KEYS = ['avgTemp', 'highTemp', 'lowTemp', 'precip', 'humid', 'wind']
 
 
 def weather_history() -> dict:
@@ -52,11 +53,11 @@ def weather_history() -> dict:
         row = {}
         for y in WEATHER_YEARS:
             v = (WEATHER_BY_YEAR.get(y) or {}).get(region)
-            if v is None and y == 2025:
-                v = {k: cur[k] for k in HISTORY_KEYS}
             row[str(y)] = {k: v.get(k) for k in HISTORY_KEYS} if v else None
         out[region] = row
     return out
+
+
 # 날씨 칸 → WEATHER 의 키
 WEATHER_FIELDS = {'dailyAvgTemp': 'avgTemp', 'highTemp': 'highTemp', 'lowTemp': 'lowTemp',
                   'annualPrecip': 'precip', 'avgWindSpeed': 'wind', 'avgHumidity': 'humid'}
@@ -93,7 +94,7 @@ FORM = [
         _f("bizGoal", "🎯 농가 경영 목표 (출하 전략)", "select", "28개월 조기출하(회전율 최우선)",
            ["28개월 조기출하(회전율 최우선)", "30개월 이상 장기비육(육질 투플러스 최우선)", "복합"]),
     ]},
-    {"title": "2. 날씨 정보 (2025년 기준)", "open": True, "fields": [
+    {"title": f"2. 날씨 정보 ({WEATHER_YEAR}년 기준)", "open": True, "fields": [
         _f("dailyAvgTemp", "연평균기온 (℃)", "float", 0.0),
         _f("highTemp", "최고기온 (℃)", "float", 0.0),
         _f("lowTemp", "최저기온 (℃)", "float", 0.0),
@@ -154,7 +155,7 @@ class SurveyError(ValueError):
 
 def form_schema() -> dict:
     return {"sections": FORM, "weather": WEATHER, "weather_fields": WEATHER_FIELDS,
-            "weather_years": WEATHER_YEARS, "weather_history": weather_history(),
+            "weather_years": WEATHER_YEARS, "weather_year": WEATHER_YEAR, "weather_history": weather_history(),
             "feed": {"stages": FEED_STAGES, "rows": FEED_ROWS, "levels": FEED_LEVELS}}
 
 
