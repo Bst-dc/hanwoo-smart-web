@@ -88,7 +88,7 @@ FORM = [
         _f("visitDate", "조사일자", "date", None),
         _f("memberName", "조합원명", "text", ""),
         _f("memberId", "조합원번호", "text", ""),
-        _f("region", "지역", "select", REGIONS[0], REGIONS, hint="고르면 아래 날씨 정보가 그 지역 값으로 채워집니다"),
+        _f("region", "지역", "select", REGIONS[0], REGIONS, hint="고르면 아래 날씨 정보가 그 지역 값으로 자동 기록됩니다"),
         _f("farmType", "전업여부", "radio", "전업", ["전업", "겸업"]),
         _f("bizGoal", "🎯 농가 경영 목표 (출하 전략)", "select", "28개월 조기출하(회전율 최우선)",
            ["28개월 조기출하(회전율 최우선)", "30개월 이상 장기비육(육질 투플러스 최우선)", "복합"]),
