@@ -1,7 +1,7 @@
 // 농가 선택 — 검색 + 조합원/비조합원 구분으로 고른다 (기본 <select> 는 검색이 안 돼서 직접 만든다).
-//   1280px 이상: 왼쪽 사이드바에 목록을 늘 펼쳐 둔다(CSS). 그보다 좁으면 위쪽 단추를 눌러 여는 떠 있는 상자.
+//   모든 폭에서 위쪽 단추(PC 는 '농가 요약 띠')를 눌러 여는 떠 있는 상자다 (11-18 — 예전에는 PC 왼쪽에 목록을 늘 펼쳐 뒀다).
 //   initFarmPicker({ onSelect }) 한 번, 농가 목록·선택이 바뀌면 renderFarmPicker() 를 부른다.
-import { esc, state, store } from "./api.js";
+import { esc, num, state, store } from "./api.js";
 
 const SCOPES = ["전체", "조합원", "비조합원"];
 const ui = { open: false, scope: SCOPES.includes(store.get("farmScope")) ? store.get("farmScope") : "전체", q: "" };   // 고른 구분은 다음에 열어도 그대로
@@ -78,7 +78,11 @@ function choose(id) {
 export function renderFarmPicker() {
   const f = state.farms.find((x) => String(x.id) === String(state.farmId));
   $("farm-btn-label").innerHTML = !state.farms.length ? "등록된 농가가 없습니다" : f ? `${esc(f.name)}${badge(f)}` : "전체 농가";
-  renderScopes(); renderList();       // 넓은 화면은 목록이 늘 보이므로 닫혀 있어도 새로 그린다
+  // 농가 요약 띠(태블릿·PC): 고른 농가의 지역·출하 두수·방문 횟수, 전체일 때는 농가 수. 성적을 저장하면 두수가 바뀌므로 그때마다 다시 쓴다.
+  $("farm-btn-meta").textContent = !state.farms.length ? ""
+    : f ? [f.region, `출하 ${num(f.shipments || 0)}두`, `방문 ${num(f.visits || 0)}회`].filter(Boolean).join(" · ")
+    : `농가 ${num(state.farms.length)}곳`;
+  renderScopes(); renderList();       // 닫혀 있어도 새로 그린다 (열 때 바로 최신 목록이 보이게)
 }
 
 export function initFarmPicker(opts) {

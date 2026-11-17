@@ -31,6 +31,29 @@ button.bg-white.border { border-color: #D3D8D7; }
 /* 메뉴 탭: 글자 + 고른 탭만 진한 글자와 앱 색(노랑) 밑줄 (시험농장 DESIGN.md 7절, 11-01 장부 녹색→앱 색) */
 .tab[aria-selected="true"] { border-bottom-color: var(--app); color: #161A19; font-weight: 600; }
 
+/* 화면 뼈대 (11-18 '2안'): 한 격자에서 폭에 따라 같은 요소가 자리를 옮긴다. 마크업은 index.html 의 .shell.
+   폰·패드: [제목 | 농가 선택 단추] → 가로 메뉴 탭 → 본문.
+   1280px 이상: [제목 | 농가 요약 띠] / [세로 메뉴 | 본문] — 메뉴는 왼쪽, 농가는 위쪽 띠로 분리. */
+.shell { display: grid; gap: .75rem; grid-template-columns: minmax(0, 1fr); grid-template-areas: "top" "tabs" "main"; }
+.shell-top { grid-area: top; position: relative; display: flex; align-items: center; gap: .75rem; min-width: 0; }
+.shell-brand { flex: none; }
+.shell-picker { flex: 1 1 0; min-width: 0; }
+.shell-tabs { grid-area: tabs; min-width: 0; margin-bottom: .25rem; }
+.shell-main { grid-area: main; min-width: 0; }
+@media (min-width: 768px) { .shell-picker { position: relative; max-width: 28rem; } }
+@media (min-width: 1280px) {
+  .shell { grid-template-columns: 14rem minmax(0, 1fr); grid-template-areas: "brand picker" "tabs main"; column-gap: 1.5rem; }
+  .shell-top { display: contents; }                   /* 한 줄 묶음을 풀어 제목·농가 띠를 각자 격자 칸에 앉힌다 */
+  .shell-brand { grid-area: brand; align-self: center; }
+  .shell-picker { grid-area: picker; max-width: none; }
+  .shell-tabs { position: sticky; top: 1rem; align-self: start; margin-bottom: 0; }
+  .shell-main { align-self: start; }
+  /* 세로 메뉴: 밑줄 대신 왼쪽 막대(앱 색)로 고른 항목을 보인다 */
+  #tabs .tab { border-bottom-width: 0; border-left: 3px solid transparent; border-radius: 0 6px 6px 0; padding: .6rem .9rem; white-space: normal; }
+  #tabs .tab:hover { background: #EEF0F0; }
+  #tabs .tab[aria-selected="true"] { border-left-color: var(--app); background: #EEF0F0; }
+}
+
 /* 모든 버튼 공통: 올리면 살짝 어두워지고(마우스만), 누르면 1px 눌림 */
 button { transition: background-color .15s, filter .15s, transform .05s; }
 button:not(:disabled) { cursor: pointer; }

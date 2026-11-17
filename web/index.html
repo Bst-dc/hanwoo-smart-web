@@ -77,37 +77,39 @@
     </form>
   </section>
 
-  <!-- 본 화면 (2026-11-01, 13인치 패드·PC 기준 — 시험농장·이상농가 분석앱과 같은 뼈대)
-       1280px 이상(패드 가로·PC): 왼쪽 사이드바에 농가 목록을 늘 펼쳐 두고, 오른쪽 본문 위에 메뉴 탭.
-       그보다 좁으면(패드 세로 1024px·폰): 사이드바를 위쪽 한 줄(앱 이름 + 농가 선택 단추)로 올려 본문 표가 폭을 다 쓴다. -->
+  <!-- 본 화면 (11-18 '2안' — 메뉴는 왼쪽, 농가 선택은 위쪽 '농가 요약 띠'로 분리. 자리 배치는 app.css 의 .shell 격자)
+       1280px 이상(PC·패드 가로): 왼쪽 = 앱 제목 + 세로 메뉴 5개, 오른쪽 위 = 농가 요약 띠(이름·지역·출하·방문 + 농가 전환), 그 아래 본문.
+         농가 목록은 띠를 눌러 여는 상자다(폰·패드와 같은 방식 — 예전에는 PC 왼쪽에 28곳을 늘 펼쳐 뒀다).
+       그보다 좁으면(패드 세로·폰): 위쪽 한 줄(앱 이름 + 농가 선택 단추) → 가로 메뉴 탭 → 본문.
+       제목과 농가 선택은 한 줄 묶음(shell-top)으로 감싼다: 폰·패드에서 열리는 목록 상자가 이 줄 전체 폭으로 펴지게 하는 기준이고, PC 에서는 묶음을 풀어 격자 칸에 나눠 앉는다. -->
   <div id="app" class="hidden">
-    <div class="max-w-[1440px] mx-auto px-4 py-4 flex flex-col gap-3 xl:flex-row xl:gap-6">
-      <!-- 11-17: 폰에서도 '제목 | 농가 선택'을 한 줄로 (예전에는 폰만 세로로 쌓여 본문이 화면의 28% 아래에서 시작했다).
-           열리는 농가 목록은 폰·패드에서 이 줄(aside) 전체 폭으로 펴지도록 기준 위치를 aside 로 둔다. -->
-      <aside class="relative md:static flex items-center gap-3 xl:flex-col xl:items-stretch xl:w-72 xl:shrink-0 xl:sticky xl:top-4 xl:self-start xl:h-[calc(100dvh-5rem)]">
-        <div class="px-1 shrink-0">
+    <div class="shell max-w-[1440px] mx-auto px-4 py-4">
+      <div class="shell-top">
+        <div class="shell-brand px-1">
           <div class="font-semibold font-serif text-base md:text-lg leading-tight">한우 스마트 컨설팅</div>
           <div class="hidden md:block text-xs text-muted">대구축협 지도컨설팅</div>
         </div>
-        <div id="farm-picker" class="static md:relative flex-1 min-w-0 md:max-w-md xl:max-w-none xl:flex xl:flex-col xl:min-h-0">
+        <div id="farm-picker" class="shell-picker">
           <button id="farm-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="컨설팅 농가 선택"
-                  class="xl:hidden w-full flex items-center justify-between gap-2 rounded-lg border border-line bg-white px-3 py-2 font-semibold text-left focus:outline-2 focus:outline-brand">
-            <span id="farm-btn-label" class="truncate">전체 농가</span><span aria-hidden="true" class="text-muted">▾</span></button>
-          <!-- 1280px 이상에서는 늘 펼친 목록, 그보다 좁으면 단추를 눌러 여는 떠 있는 상자 -->
-          <div id="farm-panel" class="hidden absolute left-0 right-0 top-full mt-1 z-30 rounded-xl border border-line bg-white shadow-lg p-2
-                                      xl:flex xl:flex-col xl:static xl:mt-0 xl:min-h-0 xl:flex-1 xl:shadow-none xl:p-0 xl:border-0 xl:bg-transparent">
-            <div class="hidden xl:block px-1 pb-2 text-xs font-semibold text-muted">농가 선택</div>
+                  class="w-full flex items-center justify-between gap-3 rounded-lg border border-line bg-white px-3 py-2 text-left focus:outline-2 focus:outline-brand">
+            <span class="min-w-0 flex flex-wrap items-baseline gap-x-3">
+              <span id="farm-btn-label" class="font-semibold truncate">전체 농가</span>
+              <span id="farm-btn-meta" class="hidden md:inline text-sm text-muted kpi-value"></span></span>
+            <span class="shrink-0 text-sm text-muted"><span class="hidden md:inline">농가 전환 </span><span aria-hidden="true">▾</span></span></button>
+          <!-- 단추를 눌러 여는 떠 있는 상자 (모든 폭 공통). PC 에서는 띠 왼쪽 아래에 36rem 폭으로 -->
+          <div id="farm-panel" class="hidden absolute left-0 right-0 top-full mt-1 z-30 rounded-xl border border-line bg-white shadow-lg p-2 xl:right-auto xl:w-[36rem]">
             <div id="farm-scope" class="flex mb-2 rounded-lg border border-line overflow-hidden" role="group" aria-label="농가 구분"></div>
             <label class="sr-only" for="farm-search">농가 검색</label>
             <input id="farm-search" type="search" autocomplete="off" placeholder="농가명·대표자·지역 검색"
                    class="w-full rounded-md border border-line bg-white px-3 py-2 focus:outline-2 focus:outline-brand">
-            <div id="farm-list" class="max-h-[55vh] xl:max-h-none xl:flex-1 xl:min-h-0 overflow-y-auto mt-2" role="listbox" aria-label="농가 목록"></div>
+            <div id="farm-list" class="max-h-[55vh] overflow-y-auto mt-2" role="listbox" aria-label="농가 목록"></div>
           </div>
         </div>
-      </aside>
+      </div>
 
-      <main class="flex-1 min-w-0">
-        <nav id="tabs" class="flex overflow-x-auto gap-1 border-b border-line mb-4" role="tablist" aria-label="메뉴"></nav>
+      <nav id="tabs" class="shell-tabs flex overflow-x-auto gap-1 border-b border-line xl:flex-col xl:overflow-visible xl:border-b-0 xl:gap-0.5" role="tablist" aria-label="메뉴"></nav>
+
+      <main class="shell-main">
         <div id="flash"></div><div id="page"></div>
       </main>
     </div>
