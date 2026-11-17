@@ -37,11 +37,11 @@ WEATHER = {
 }
 REGIONS = list(WEATHER) + ['기타']
 
-# 최근 3년 비교표 (읽기 전용 참고용 — 입력칸·저장 값과 무관). 11-18 화면 틀만 먼저 만들었다.
-#   2025 는 위 WEATHER 값을 그대로 쓰고, 2023·2024 는 기상청 일자료 활용신청이 승인되면 아래 WEATHER_BY_YEAR 에 채운다.
+# 최근 3년 비교표 (읽기 전용 참고용 — 입력칸·저장 값과 무관).
+#   값은 기상청 ASOS 일자료로 만든 통계(weather_history.py, 만드는 법은 build_weather_history.py). 2025 는 위 WEATHER 와 같다.
 #   형식: WEATHER_BY_YEAR[연도][지역] = {'avgTemp':…, 'highTemp':…, 'lowTemp':…, 'precip':…, 'humid':…}  (값이 없는 칸은 화면에 '준비 중')
+from .weather_history import BY_YEAR as WEATHER_BY_YEAR
 WEATHER_YEARS = [2023, 2024, 2025]
-WEATHER_BY_YEAR: dict[int, dict[str, dict]] = {}
 HISTORY_KEYS = ['avgTemp', 'highTemp', 'lowTemp', 'precip', 'humid']
 
 
