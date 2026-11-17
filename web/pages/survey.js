@@ -138,6 +138,20 @@ function listView(d) {
       : card('<p class="text-sm text-muted">아직 방문 기록이 없습니다. 위 버튼으로 첫 방문조사를 작성하세요.</p>')}`;
 }
 
+// ---------------------------------------------------------------- 최근 3년 날씨 비교표 (읽기 전용 참고용 — 입력칸·저장 값과 무관)
+const WX_COLS = [["avgTemp", "평균기온", "℃", 1], ["highTemp", "최고기온", "℃", 1], ["lowTemp", "최저기온", "℃", 1], ["precip", "강수량", "mm", 0], ["humid", "습도", "%", 1]];
+function weatherHistoryHtml(region) {
+  const hist = (FORM.weather_history || {})[region];
+  const years = FORM.weather_years || [];
+  if (!hist) return `<p class="text-xs text-muted">이 지역은 날씨 자료가 없어 비교표를 보여 줄 수 없습니다. 위 칸에 직접 적어 주세요.</p>`;
+  const src = (FORM.weather[region] || {}).source;
+  const cell = (v, unit, dg) => (v == null ? '<span class="text-muted">준비 중</span>' : `${Number(v).toLocaleString("ko-KR", { minimumFractionDigits: dg, maximumFractionDigits: dg })}<span class="text-[11px] text-muted"> ${unit}</span>`);
+  return `<div class="table-wrap sticky-first"><table class="w-full text-sm">
+      <thead class="bg-panel text-muted text-xs"><tr><th class="text-left font-medium px-2 py-1.5">연도</th>${WX_COLS.map(([, n]) => `<th class="text-right font-medium px-2 py-1.5 whitespace-nowrap">${n}</th>`).join("")}</tr></thead>
+      <tbody>${years.map((y) => { const r = hist[String(y)]; return `<tr class="border-t border-line"><td class="px-2 py-1.5 font-medium whitespace-nowrap">${y}년</td>${WX_COLS.map(([k, , u, dg]) => `<td class="kpi-value text-right px-2 py-1.5 whitespace-nowrap">${cell(r ? r[k] : null, u, dg)}</td>`).join("")}</tr>`; }).join("")}</tbody></table></div>
+    <p class="text-xs text-muted mt-1.5">참고용 표입니다. 위 입력칸은 그대로이고, 이 표를 보고 직접 고치셔도 됩니다.${src ? ` 출처: ${esc(src)}.` : ""}</p>`;
+}
+
 // ---------------------------------------------------------------- 조사표
 function formView(farm) {
   const title = st.meta ? `${st.meta.visit_number}차 방문조사 고치기` : "새 방문조사 작성";
@@ -155,6 +169,7 @@ function formView(farm) {
           <summary class="cursor-pointer font-semibold">${esc(s.title)}</summary>
           ${i === 1 ? '<p class="text-xs text-muted mt-2">지역을 바꾸면 그 지역의 2025년 날씨로 다시 채워집니다.</p>' : ""}
           <div class="mt-3 grid gap-4 ${s.fields.some((f) => f.kind === "feed" || f.kind === "textarea") ? "" : "sm:grid-cols-2 lg:grid-cols-3"}">${s.fields.map((f) => field(f, st.values[f.key])).join("")}</div>
+          ${i === 1 ? `<div class="mt-4"><div class="text-sm font-medium mb-1.5">최근 3년 비교</div><div id="wx-history">${weatherHistoryHtml(st.values.region)}</div></div>` : ""}
         </details>`).join("")}
       <div class="savebar z-10 rounded-2xl bg-white/95 border border-line p-3 shadow-lg">
         <button id="sv-save" type="submit" class="${btn} w-full bg-brand text-white">${st.meta ? "고친 내용 저장" : "방문조사 저장"}</button>
@@ -203,6 +218,8 @@ function bindForm(el, farm, rerender) {
         const box = form.querySelector(`[data-key="${k}"]`);
         if (box) box.value = wd[wk] ?? 0;
       });
+      const hist = form.querySelector("#wx-history");
+      if (hist) hist.innerHTML = weatherHistoryHtml(e.target.value);
     }
   });
   // 버튼 묶음은 화면을 다시 그리지 않고 제자리에서 색만 바꾼다 (펼친 칸·스크롤이 그대로 남게)

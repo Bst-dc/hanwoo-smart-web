@@ -36,6 +36,27 @@ WEATHER = {
     '칠곡': {'avgTemp': 14.6, 'highTemp': 38.3, 'lowTemp': -11.0, 'precip': 1046.5, 'wind': 1.3, 'humid': 65.0, 'source': '인접 구미 관측소 값 준용'},
 }
 REGIONS = list(WEATHER) + ['기타']
+
+# 최근 3년 비교표 (읽기 전용 참고용 — 입력칸·저장 값과 무관). 11-18 화면 틀만 먼저 만들었다.
+#   2025 는 위 WEATHER 값을 그대로 쓰고, 2023·2024 는 기상청 일자료 활용신청이 승인되면 아래 WEATHER_BY_YEAR 에 채운다.
+#   형식: WEATHER_BY_YEAR[연도][지역] = {'avgTemp':…, 'highTemp':…, 'lowTemp':…, 'precip':…, 'humid':…}  (값이 없는 칸은 화면에 '준비 중')
+WEATHER_YEARS = [2023, 2024, 2025]
+WEATHER_BY_YEAR: dict[int, dict[str, dict]] = {}
+HISTORY_KEYS = ['avgTemp', 'highTemp', 'lowTemp', 'precip', 'humid']
+
+
+def weather_history() -> dict:
+    """{지역: {연도: {값…} 또는 None}} — 값이 아직 없는 해는 None."""
+    out = {}
+    for region, cur in WEATHER.items():
+        row = {}
+        for y in WEATHER_YEARS:
+            v = (WEATHER_BY_YEAR.get(y) or {}).get(region)
+            if v is None and y == 2025:
+                v = {k: cur[k] for k in HISTORY_KEYS}
+            row[str(y)] = {k: v.get(k) for k in HISTORY_KEYS} if v else None
+        out[region] = row
+    return out
 # 날씨 칸 → WEATHER 의 키
 WEATHER_FIELDS = {'dailyAvgTemp': 'avgTemp', 'highTemp': 'highTemp', 'lowTemp': 'lowTemp',
                   'annualPrecip': 'precip', 'avgWindSpeed': 'wind', 'avgHumidity': 'humid'}
@@ -133,6 +154,7 @@ class SurveyError(ValueError):
 
 def form_schema() -> dict:
     return {"sections": FORM, "weather": WEATHER, "weather_fields": WEATHER_FIELDS,
+            "weather_years": WEATHER_YEARS, "weather_history": weather_history(),
             "feed": {"stages": FEED_STAGES, "rows": FEED_ROWS, "levels": FEED_LEVELS}}
 
 
