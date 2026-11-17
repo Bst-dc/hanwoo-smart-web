@@ -116,10 +116,23 @@ export async function renderShipment(el, { farm, farms, onPickFarm, onSaved = as
 
       <h3 class="text-base font-bold mt-6 mb-2">최근 ${d.trend.years.length}년 추이 <span class="text-sm font-normal text-muted">(${d.trend.years[0]}~${d.trend.years.at(-1)}년)</span></h3>
       ${card(`
-        <label class="block text-sm text-muted mb-1" for="sh-metric">평가항목</label>
-        <select id="sh-metric" class="w-full sm:w-72 rounded-xl border border-line bg-white px-3 py-2 mb-3">
-          ${d.trend.metrics.map((m) => `<option value="${m.key}">${esc(m.label)}</option>`).join("")}</select>
-        <div class="relative" style="height:280px"><canvas id="sh-trend" role="img" aria-label="최근 연도별 평가항목 추이"></canvas></div>`)}
+        <div class="flex flex-wrap items-center gap-3 mb-3">
+          <div id="sh-view" class="inline-flex rounded-xl border border-line overflow-hidden text-sm" role="group" aria-label="추이 보기 방식">
+            <button data-v="all" class="px-4 py-2 min-h-[44px]">전체 항목</button>
+            <button data-v="one" class="px-4 py-2 min-h-[44px] border-l border-line">한 항목 크게</button>
+          </div>
+          <div id="sh-one-pick" class="hidden items-center gap-2">
+            <label class="text-sm text-muted" for="sh-metric">평가항목</label>
+            <select id="sh-metric" class="rounded-xl border border-line bg-white px-3 py-2">
+              ${d.trend.metrics.map((m) => `<option value="${m.key}">${esc(m.label)}</option>`).join("")}</select>
+          </div>
+        </div>
+        <div id="sh-all" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          ${d.trend.metrics.map((m) => `<div class="rounded-xl border border-line p-2 min-w-0">
+            <div class="text-sm font-semibold px-1">${esc(m.label)}</div>
+            <div class="relative" style="height:190px"><canvas id="sh-mini-${m.key}" role="img" aria-label="${esc(m.label)} 추이"></canvas></div></div>`).join("")}
+        </div>
+        <div id="sh-one" class="relative hidden" style="height:280px"><canvas id="sh-trend" role="img" aria-label="최근 연도별 평가항목 추이"></canvas></div>`)}
       <details class="mt-3 rounded-2xl bg-white border border-line p-4">
         <summary class="cursor-pointer font-semibold text-sm">최근 ${d.trend.years.length}년 전국 1:1 종합 비교표</summary>
         <div class="mt-3">${trendTable(d.trend)}</div>
@@ -166,19 +179,40 @@ export async function renderShipment(el, { farm, farms, onPickFarm, onSaved = as
   };
   drawRecords();
 
-  if (!d.has_data) keep("sh-trend", null);   // 성적이 없는 화면으로 바뀌면 이전 차트를 정리한다
+  if (!d.has_data) { keep("sh-trend", null); d.trend?.metrics?.forEach((m) => keep(`sh-mini-${m.key}`, null)); }   // 성적이 없는 화면으로 바뀌면 이전 차트를 정리한다
   else {
     const sheet = () => compareSheetHtml(d, { gName, yearCaption: cmpCaption });
     el.querySelector("#sh-print").addEventListener("click", () => openCompareSheet(sheet()));
     el.querySelector("#sh-dl").addEventListener("click", () =>
       downloadCompareSheet(sheet(), `${d.farm.name}_전국비교표_${cmpCaption.replace(/\s/g, "")}.html`));
     const sel = el.querySelector("#sh-metric");
+    const labels = d.trend.years.map((y) => `${y}년`);
+    const metricLabel = (key) => d.trend.metrics.find((m) => m.key === key).label;
+    let view = "all";
     const draw = () => {
-      const s = d.trend.series[sel.value];
-      keep("sh-trend", lineChart(el.querySelector("#sh-trend"), {
-        labels: d.trend.years.map((y) => `${y}년`), farm: s.farm, national: s.national,
-        yTitle: d.trend.metrics.find((m) => m.key === sel.value).label, metric: sel.value }));
+      el.querySelectorAll("#sh-view button").forEach((b) => {
+        const on = b.dataset.v === view;
+        b.className = `px-4 py-2 min-h-[44px] ${b.dataset.v === "one" ? "border-l border-line" : ""} ${on ? "bg-brand text-white font-semibold" : "bg-white text-muted"}`;
+        b.setAttribute("aria-pressed", on);
+      });
+      const all = view === "all";
+      el.querySelector("#sh-all").classList.toggle("hidden", !all);       // 숨긴 캔버스는 크기가 0 이라 보일 때 그린다
+      el.querySelector("#sh-one").classList.toggle("hidden", all);
+      el.querySelector("#sh-one-pick").classList.toggle("hidden", all);
+      el.querySelector("#sh-one-pick").classList.toggle("flex", !all);
+      if (all) {
+        keep("sh-trend", null);
+        d.trend.metrics.forEach((m) => {
+          const s = d.trend.series[m.key];
+          keep(`sh-mini-${m.key}`, lineChart(el.querySelector(`#sh-mini-${m.key}`), { labels, farm: s.farm, national: s.national, yTitle: "", metric: m.key }));
+        });
+      } else {
+        d.trend.metrics.forEach((m) => keep(`sh-mini-${m.key}`, null));
+        const s = d.trend.series[sel.value];
+        keep("sh-trend", lineChart(el.querySelector("#sh-trend"), { labels, farm: s.farm, national: s.national, yTitle: metricLabel(sel.value), metric: sel.value }));
+      }
     };
+    el.querySelectorAll("#sh-view button").forEach((b) => b.addEventListener("click", () => { view = b.dataset.v; draw(); }));
     sel.addEventListener("change", draw);
     draw();
   }
