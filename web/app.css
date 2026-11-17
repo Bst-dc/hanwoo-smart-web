@@ -12,6 +12,20 @@ h1, h2, h3 { font-family: var(--font-serif); font-weight: 400; letter-spacing: 0
 .app-bar { border-top: 3px solid var(--app); }
 .app-mark { background: var(--app); color: var(--app-on); }
 .app-current { background: var(--app-tint); color: var(--app-text); }
+/* 공통 머리글 '다른 시스템' 메뉴 (11-17 통일 — 시험농장·출하분석·포털·시세전망·지도와 같은 밑줄형): 회색 글자, 지금 여기만 앱 색 글자 + 앱 색 밑줄.
+   폰 폭에서 넘치면 메뉴만 가로로 밀리고, 아주 좁으면 앱 이름은 숨긴다. (예전 알약형은 폰에서 일부 메뉴를 숨겼다) */
+.sys-nav { display: flex; align-items: center; gap: 20px; font-size: 14px; font-weight: 500; white-space: nowrap; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.sys-nav::-webkit-scrollbar { display: none; }
+.sys-nav a { color: #59605F; text-decoration: none; padding: 4px 0; border-bottom: 2px solid transparent; }
+.sys-nav a:hover { color: #161A19; }
+.sys-nav a[aria-current="page"] { color: var(--app-text); font-weight: 600; border-bottom-color: var(--app); }
+@media (max-width: 480px) { .sys-nav { gap: 8px; font-size: 13px; } .app-bar > div { padding-left: 12px; padding-right: 12px; } }   /* 메뉴 5개가 375px 폭에 다 들어오게 */
+@media (max-width: 639px) { .app-bar .hw-app { display: none; } }
+/* 단추 색 통일 (11-17 '모두 파랑' — 시험농장 DESIGN.md 5절과 같은 값): 주 단추(bg-brand)는 파랑 #256FCC(흰 글자 5.0:1), 올리면 #1F5FAE. 평평하게.
+   앱 색(윗줄·마크)은 앱을 구분하고, 파랑은 '누르는 곳'(고른 토글 버튼 포함). 폭은 각 화면 그대로 — w-full 목록 행 단추(농장 카드·방문 기록 등)가 많아 시험농장의 '폭 줄이기'는 쓰지 않는다. */
+:is(button, a).bg-brand { background-color: #256FCC; border-color: #256FCC; }
+@media (hover: hover) { :is(button, a).bg-brand:hover:not(:disabled) { background-color: #1F5FAE; } }
+button.bg-white.border { border-color: #D3D8D7; }
 .kpi-value { font-variant-numeric: tabular-nums; }
 
 /* 메뉴 탭: 글자 + 고른 탭만 진한 글자와 앱 색(노랑) 밑줄 (시험농장 DESIGN.md 7절, 11-01 장부 녹색→앱 색) */
