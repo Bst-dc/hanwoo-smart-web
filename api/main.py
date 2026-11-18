@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import auth, config, db
+from . import health as health_check
 from .limits import BodyLimitMiddleware
 from .routers import auth as auth_router
 from .routers import dashboard, data, farms, reports, shipment_input, shipments, surveys
@@ -64,10 +65,18 @@ async def unhandled(request: Request, exc: Exception):
     return JSONResponse(status_code=500, content={"detail": f"서버 오류가 났습니다 ({type(exc).__name__})."})
 
 
-@app.get("/api/health", tags=["상태"])
+@app.api_route("/api/health", methods=["GET", "HEAD"], tags=["상태"])
 def health():
-    """Docker 상태 확인용. DB 에는 붙지 않는다."""
+    """Docker 상태 확인용. DB 에는 붙지 않는다. (HEAD 도 받는다 — 일부 감시 서비스가 HEAD 로 확인)"""
     return {"ok": True, "db": "supabase" if db.using_supabase() else "sqlite"}
+
+
+@app.api_route("/api/health/deep", methods=["GET", "HEAD"], tags=["상태"])
+def health_deep():
+    """외부 감시용. DB 에 실제로 붙어 본다(api/health.py). 내려가 있으면 503. Docker 상태 확인에는 쓰지 않는다."""
+    up = health_check.is_up()
+    return JSONResponse(status_code=200 if up else 503, content={"ok": up, "db": "up" if up else "down"},
+                        headers={"Cache-Control": "no-store"})
 
 
 app.include_router(auth_router.router)

@@ -28,7 +28,8 @@
 
 | 경로 | 내용 |
 |---|---|
-| `api/main.py` | 앱 시작점. 로그 미들웨어, 처리 안 된 예외 → 500(화면에는 오류 종류 이름만 보임), `/api/health`, 라우터 등록, `web/` 정적 파일 제공 |
+| `api/main.py` | 앱 시작점. 로그 미들웨어, 처리 안 된 예외 → 500(화면에는 오류 종류 이름만 보임), `/api/health`·`/api/health/deep`, 라우터 등록, `web/` 정적 파일 제공 |
+| `api/health.py` | `/api/health/deep` 의 DB 점검 — 일회용 연결로 `SELECT 1`, 3초 제한, 20초 캐시 |
 | `api/routers/` | 화면별 API: auth, farms, dashboard, shipments, shipment_input, surveys, reports, data |
 | `api/services/` | 실제 처리: 대시보드, 출하성적, eKAPE(`ekape.py`), 현장조사·조사표, AI 리포트(`ai_report.py`·`report_data.py`), 데이터 관리 |
 | `api/config.py` | 설정값. 환경변수 → `.streamlit/secrets.toml` 순서로 읽는다. `CONSULTING_LOCAL_ONLY`, `CONSULTING_DB_PATH` 도 여기서 처리 |
@@ -143,7 +144,10 @@ CONSULTING_LOCAL_ONLY=1 DATABASE_URL= <venv>/Scripts/python -m unittest discover
 ## 운영 확인·장애 진단
 
 1. **배포 반영**: `curl https://consulting.3-38-225-111.sslip.io/<파일>.js | grep <새 코드>`. 화면 파일은 로그인 없이 받아진다.
-2. **`/api/health` 는 DB 에 붙지 않는다.** 그래서 DB 가 끊겨도 항상 정상으로 나온다. DB 를 확인하려면 로그인한 브라우저에서 `fetch('/api/farms')` 처럼 실제 API 를 부른다.
+2. **`/api/health` 는 DB 에 붙지 않는다**(Docker 생존 확인용 — DB 가 끊겼다고 컨테이너를 다시 띄우지 않게). 그래서 DB 가 끊겨도 항상 정상으로 나온다.
+   - **DB 까지 보려면 `/api/health/deep`**(2026-11-18 추가, 로그인 불필요). 일회용 연결로 `SELECT 1` 을 해서 정상이면 200 `{"ok":true,"db":"up"}`, 내려가 있으면 503 `{"ok":false,"db":"down"}` 이다(오류 내용은 담지 않음). 연결 풀·조회 캐시(600초)를 거치지 않는다. 3초 제한·20초 캐시라 감시가 자주 불러도 DB 에 부하가 없다.
+   - **외부 감시(UptimeRobot 등)는 이 주소를 GET 으로 걸고 키워드 `"ok":true` 를 확인**한다. Docker HEALTHCHECK 에는 쓰지 않는다(Supabase 가 잠깐 끊길 때마다 컨테이너가 재시작되므로). 두 주소 모두 HEAD 도 받는다. 구현·시험: `api/health.py`, `tests/test_api_health.py`.
+   - 그 밖에 앱 동작을 확인하려면 로그인한 브라우저에서 `fetch('/api/farms')` 처럼 실제 API 를 부른다.
 3. **500 화면에는 오류 종류 이름만 나온다.** 원인을 보려면:
    - 서버 로그: 서버에서 `cd /opt/hanwoo/deploy && sudo docker compose logs --tail 100 consulting-next`
    - Supabase 쪽: 프로젝트 상태와 로그(supavisor·postgres)
