@@ -19,7 +19,7 @@
 - **배포**: AWS Lightsail 서버(시험농장·출하성적 분석앱과 같이 씀).
   - 서버가 공개 저장소 `Bst-dc/hanwoo-smart-web` 의 `main` 을 2분마다 받아 새로 빌드한다. **즉 `main` 에 푸시하면 곧 배포된다.**
   - 이미지는 Python 3.12.
-  - 서버 Docker·Caddy 설정과 운영 안내는 `../aws-deploy/README_배포.md` 에 있다. 이 저장소의 `deploy/consulting-next/setup.sh` 는 처음 설치할 때만 쓴다.
+  - 서버 Docker·Caddy 설정과 운영 안내는 `../../50_허브_서버/aws-deploy/README_배포.md` 에 있다. 이 저장소의 `deploy/consulting-next/setup.sh` 는 처음 설치할 때만 쓴다.
   - 서버 Caddyfile 은 `mv` 하지 말고 내용만 덮어쓴다(caddy 컨테이너가 파일 하나를 bind-mount 한다).
 - **작업 방식**: `main` 에서 바로 작업한다. force push 는 `.claude/hooks/block_force_push.py` 가 막는다.
   - 이 훅은 한 Bash 명령에 `git` 과 함께 `[ -f`·`rm -f` 같은 글자가 있으면 force push 로 잘못 알고 막는다. 그럴 때는 명령을 나눈다.
@@ -127,7 +127,7 @@ CONSULTING_LOCAL_ONLY=1 DATABASE_URL= <venv>/Scripts/python -m unittest discover
 
 ## 화면 디자인 (2026-11-01)
 
-- **공통 기준**: 한우 업무 시스템 공통 기준을 따른다(`../시험농장/DESIGN.md`, `hanwoo-portal/theme/hanwoo-theme.css`).
+- **공통 기준**: 한우 업무 시스템 공통 기준을 따른다(`../시험농장/DESIGN.md`(시험농장 폴더 이동 후엔 `../시험농장/` 그대로), `../../50_허브_서버/hanwoo-portal/theme/hanwoo-theme.css`).
   - 중립 회색 바탕, 잉크색 단추. 글꼴은 오빗(Orbit 400, 2026-11-06 다른 앱과 같게) — 제목·본문·표·차트 모두. 인쇄 창은 맑은 고딕 그대로.
   - 장부 녹색(`accent`)은 데이터와 '고른 표시'에만 쓴다.
   - 모서리 6px/4px(`web/index.html` 의 `@theme` 토큰). **이모지는 쓰지 않는다.**
