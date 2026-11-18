@@ -35,6 +35,7 @@
 | `api/config.py` | 설정값. 환경변수 → `.streamlit/secrets.toml` 순서로 읽는다. `CONSULTING_LOCAL_ONLY`, `CONSULTING_DB_PATH` 도 여기서 처리 |
 | `api/db.py` | DB 연결. 요청마다 열고 닫는다(`get_conn`) |
 | `api/backup.py` | 저장한 뒤 Supabase 전체를 SQLite 로 떠서 비공개 저장소 `data/consulting.db` 로 올림. 무료 요금제의 유일한 복구 수단 |
+| `api/backup_job.py` | 서버 cron(매일 03:50, `aws-deploy/consulting-backup.sh`)이 부르는 정기 백업. `backup.run` 을 한 번 더 돌리고 실패하면 종료 코드 1 |
 | `api/auth.py`, `api/limits.py` | 접속 비밀번호(`APP_PASSWORD`) 세션 쿠키, 요청 제한 |
 | `web/` | `index.html`·`app.js`·`api.js`·`charts.js`(Chart.js)·`farmpicker.js`·`survey_draft.js`·`print_compare.js`(인쇄 창), 화면별 `web/pages/*.js` |
 | `db_adapter.py` | psycopg2 를 sqlite3 처럼 쓰게 해 주는 층(아래 참고). 원본은 시험농장 저장소에 있다 |
