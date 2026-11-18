@@ -127,7 +127,7 @@ CONSULTING_LOCAL_ONLY=1 DATABASE_URL= <venv>/Scripts/python -m unittest discover
 
 ## 화면 디자인 (2026-11-01)
 
-- **공통 기준**: 한우 업무 시스템 공통 기준을 따른다(`../시험농장/DESIGN.md`(시험농장 폴더 이동 후엔 `../시험농장/` 그대로), `../../50_허브_서버/hanwoo-portal/theme/hanwoo-theme.css`).
+- **공통 기준**: 한우 업무 시스템 공통 기준을 따른다(`../시험농장/DESIGN.md`, `../../50_허브_서버/hanwoo-portal/theme/hanwoo-theme.css`).
   - 중립 회색 바탕, 잉크색 단추. 글꼴은 오빗(Orbit 400, 2026-11-06 다른 앱과 같게) — 제목·본문·표·차트 모두. 인쇄 창은 맑은 고딕 그대로.
   - 장부 녹색(`accent`)은 데이터와 '고른 표시'에만 쓴다.
   - 모서리 6px/4px(`web/index.html` 의 `@theme` 토큰). **이모지는 쓰지 않는다.**
