@@ -11,16 +11,15 @@
 ## 지금 운영 구조 (2026-11 기준)
 
 - **앱**: FastAPI `api/` + 화면 `web/`(빌드 없는 vanilla JS). 서버 컨테이너 이름은 `consulting-next`.
-- **주소**: https://consulting.3-38-225-111.sslip.io/ (같은 앱이 `consulting-next.…` 주소로도 열린다).
+- **주소**: https://consulting.bst84.win/ (집 미니PC, Cloudflare Tunnel). 옛 `consulting.3-38-225-111.sslip.io` 는 AWS 해지(2026-11-27)로 없어졌다.
 - **옛 Streamlit 앱**은 2026-10-15에 내렸다.
   - 실행 가능한 전체는 git 태그 `legacy-streamlit` 에 있다. 되돌리는 스크립트는 없으니 필요하면 이 태그에서 다시 빌드한다.
   - `tests/legacy_snapshot/streamlit_app_legacy.py` 는 규칙 비교 시험 전용이다. 실행하지 않는다.
   - Streamlit Community Cloud 앱은 2026-10-16에 모두 지웠다.
-- **배포**: AWS Lightsail 서버(시험농장·출하성적 분석앱과 같이 씀).
-  - 서버가 공개 저장소 `Bst-dc/hanwoo-smart-web` 의 `main` 을 2분마다 받아 새로 빌드한다. **즉 `main` 에 푸시하면 곧 배포된다.**
+- **배포**: 집 미니PC(시험농장·출하성적 분석앱과 같이 씀). AWS Lightsail 은 2026-11-27 해지.
+  - 미니PC `hanwoo-update.timer` 가 공개 저장소 `Bst-dc/hanwoo-smart-web` 의 `main` 을 2분마다 받아 새로 빌드한다. **즉 `main` 에 푸시하면 곧 배포된다.**
   - 이미지는 Python 3.12.
-  - 서버 Docker·Caddy 설정과 운영 안내는 `../../50_허브_서버/aws-deploy/README_배포.md` 에 있다. 이 저장소의 `deploy/consulting-next/setup.sh` 는 처음 설치할 때만 쓴다.
-  - 서버 Caddyfile 은 `mv` 하지 말고 내용만 덮어쓴다(caddy 컨테이너가 파일 하나를 bind-mount 한다).
+  - Docker 설정과 운영 안내는 `work-notes/50_허브_서버/minipc-deploy/`, `work-notes/00_문서/10_미니PC_작업환경_사용법.md` 에 있다. 이 저장소의 `deploy/consulting-next/setup.sh` 는 옛 AWS 설치용 기록이다.
 - **작업 방식**: `main` 에서 바로 작업한다. force push 는 `.claude/hooks/block_force_push.py` 가 막는다.
   - 이 훅은 한 Bash 명령에 `git` 과 함께 `[ -f`·`rm -f` 같은 글자가 있으면 force push 로 잘못 알고 막는다. 그럴 때는 명령을 나눈다.
 
@@ -35,7 +34,7 @@
 | `api/config.py` | 설정값. 환경변수 → `.streamlit/secrets.toml` 순서로 읽는다. `CONSULTING_LOCAL_ONLY`, `CONSULTING_DB_PATH` 도 여기서 처리 |
 | `api/db.py` | DB 연결. 요청마다 열고 닫는다(`get_conn`) |
 | `api/backup.py` | 저장한 뒤 Supabase 전체를 SQLite 로 떠서 비공개 저장소 `data/consulting.db` 로 올림. 무료 요금제의 유일한 복구 수단 |
-| `api/backup_job.py` | 서버 cron(매일 03:50, `aws-deploy/consulting-backup.sh`)이 부르는 정기 백업. `backup.run` 을 한 번 더 돌리고 실패하면 종료 코드 1 |
+| `api/backup_job.py` | 미니PC systemd `hanwoo-consulting-backup.timer`(매일 03:50)가 부르는 정기 백업. `backup.run` 을 한 번 더 돌리고 실패하면 종료 코드 1 |
 | `api/auth.py`, `api/limits.py` | 접속 비밀번호(`APP_PASSWORD`) 세션 쿠키, 요청 제한 |
 | `web/` | `index.html`·`app.js`·`api.js`·`charts.js`(Chart.js)·`farmpicker.js`·`survey_draft.js`·`print_compare.js`(인쇄 창), 화면별 `web/pages/*.js` |
 | `db_adapter.py` | psycopg2 를 sqlite3 처럼 쓰게 해 주는 층(아래 참고). 원본은 시험농장 저장소에 있다 |
@@ -144,7 +143,7 @@ CONSULTING_LOCAL_ONLY=1 DATABASE_URL= <venv>/Scripts/python -m unittest discover
 
 ## 운영 확인·장애 진단
 
-1. **배포 반영**: `curl https://consulting.3-38-225-111.sslip.io/<파일>.js | grep <새 코드>`. 화면 파일은 로그인 없이 받아진다.
+1. **배포 반영**: `curl https://consulting.bst84.win/<파일>.js | grep <새 코드>`. 화면 파일은 로그인 없이 받아진다.
 2. **`/api/health` 는 DB 에 붙지 않는다**(Docker 생존 확인용 — DB 가 끊겼다고 컨테이너를 다시 띄우지 않게). 그래서 DB 가 끊겨도 항상 정상으로 나온다.
    - **DB 까지 보려면 `/api/health/deep`**(2026-11-18 추가, 로그인 불필요). 일회용 연결로 `SELECT 1` 을 해서 정상이면 200 `{"ok":true,"db":"up"}`, 내려가 있으면 503 `{"ok":false,"db":"down"}` 이다(오류 내용은 담지 않음). 연결 풀·조회 캐시(600초)를 거치지 않는다. 3초 제한·20초 캐시라 감시가 자주 불러도 DB 에 부하가 없다.
    - **외부 감시(UptimeRobot 등)는 이 주소를 GET 으로 걸고 키워드 `"ok":true` 를 확인**한다. Docker HEALTHCHECK 에는 쓰지 않는다(Supabase 가 잠깐 끊길 때마다 컨테이너가 재시작되므로). 두 주소 모두 HEAD 도 받는다. 구현·시험: `api/health.py`, `tests/test_api_health.py`.

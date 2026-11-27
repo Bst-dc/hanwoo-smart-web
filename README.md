@@ -1,12 +1,12 @@
 # 🐂 한우 스마트 컨설팅 통합 웹 플랫폼
 
-> **2026-10-15 안내: 옛 Streamlit 앱은 운영에서 내렸다.** 지금 운영은 새 앱(FastAPI `api/` + `web/`, AWS `consulting-next`)뿐이다.
+> **2026-10-15 안내: 옛 Streamlit 앱은 운영에서 내렸다.** 지금 운영은 새 앱(FastAPI `api/` + `web/`, 미니PC `consulting-next`, `https://consulting.bst84.win`)뿐이다. AWS Lightsail 은 2026-11-27 해지.
 > 아래 설명 중 Streamlit·`streamlit_app.py`·Streamlit Community Cloud 이야기는 **옛 앱 기준의 기록**이다. 옛 앱의 실행 가능한 전체는 git 태그 `legacy-streamlit` 에 있고,
 > `streamlit_app.py` 는 `tests/legacy_snapshot/streamlit_app_legacy.py`(규칙 비교 시험 전용, 실행하지 않음)로 옮겼다. 서버에서도 `consulting` 컨테이너를 내렸다(`/opt/hanwoo/deploy/*.bak-20261015-*` 에 이전 설정).
 
 농가 이력제 기반 출하성적 자동 추출, 전국 평균 성적과의 1:1 비교분석표, 모바일 현장 방문조사(사양관리·농가대화) 입력, Claude AI 연동 종합 진단 리포트 생성, 그리고 방문 농가 전체 누적 데이터베이스 및 연도별 평균 성적 대시보드를 제공하는 올인원 웹 시스템입니다.
 
-**운영 중 배포 주소**: https://consulting.3-38-225-111.sslip.io/ — 모바일용 새 앱(FastAPI + HTML/JS, `api/`·`web/`)
+**운영 중 배포 주소**: https://consulting.bst84.win/ — 모바일용 새 앱(FastAPI + HTML/JS, `api/`·`web/`)
 
 - 기존 Streamlit 앱은 2026-10-15에 내렸고 `consulting-old` 주소도 더 이상 쓰지 않습니다. 주소 전환용 `switch.sh` 도 할 일을 마쳐 삭제했습니다(2026-10-16).
 - 옛 앱으로 되돌려야 하면 git 태그 `legacy-streamlit` 에서 다시 띄워야 합니다(되돌리기 스크립트 없음).
